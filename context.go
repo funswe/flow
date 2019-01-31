@@ -3,20 +3,46 @@ package flow
 import (
 	"net/http"
 	"net/url"
-	"github.com/julienschmidt/httprouter"
+	"strconv"
+	"encoding/json"
 )
 
 type Context struct {
 	app    *Application
 	req    *request
 	res    *response
-	params httprouter.Params
+	params map[string]interface{}
 }
 
-func NewContext(app *Application, w http.ResponseWriter, r *http.Request, params httprouter.Params) *Context {
+func NewContext(app *Application, w http.ResponseWriter, r *http.Request, params map[string]interface{}) *Context {
 	req := newRequest(app, r)
 	res := newResponse(app, w, r)
 	return &Context{req: req, app: app, res: res, params: params}
+}
+
+func (c *Context) GetParam(key, defaultValue string) (value string) {
+	switch jv := c.params[key].(type) {
+	case string:
+		value = jv
+	case int:
+		value = strconv.Itoa(jv)
+	case float64:
+		value = strconv.FormatFloat(jv, 'f', -1, 64)
+	case float32:
+		value = strconv.FormatFloat(float64(jv), 'f', -1, 64)
+	}
+	if len(value) == 0 {
+		return defaultValue
+	}
+	return
+}
+
+func (c *Context) ParseStructure(object interface{}) {
+	body, err := json.Marshal(c.params)
+	if err != nil {
+		return
+	}
+	json.Unmarshal(body, object)
 }
 
 func (c *Context) GetHeaders() map[string][]string {
