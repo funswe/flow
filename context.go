@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"encoding/json"
+	"fmt"
 )
 
 type Context struct {
@@ -30,6 +31,8 @@ func (c *Context) GetParam(key, defaultValue string) (value string) {
 		value = strconv.FormatFloat(jv, 'f', -1, 64)
 	case float32:
 		value = strconv.FormatFloat(float64(jv), 'f', -1, 64)
+	default:
+		fmt.Println("jv===", jv)
 	}
 	if len(value) == 0 {
 		return defaultValue

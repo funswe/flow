@@ -6,13 +6,13 @@ import (
 )
 
 type ccc struct {
-	C1 int `json:"c1"`
+	C1 string `json:"c1"`
 }
 
 type appInfo struct {
 	Aaa float64 `json:"aaa"`
 	Bbb float64 `json:"bbb"`
-	Ccc ccc     `json:"ccc"`
+	Ccc *ccc    `json:"ccc"`
 }
 
 func TestServer(t *testing.T) {
@@ -27,9 +27,9 @@ func TestServer(t *testing.T) {
 		})
 	})
 	app.POST("/a/b/:name", func(ctx *Context) {
-		a := &appInfo{}
+		a := &appInfo{Ccc: &ccc{}}
 		ctx.ParseStructure(a)
-		fmt.Println(a.Aaa, a.Bbb, a.Ccc.C1)
+		fmt.Println("ccc===", ctx.GetParam("ccc", ""), ctx.GetParam("ddd", ""))
 		ctx.JsonResponse(map[string]interface{}{
 			"aaa":  111,
 			"bbbb": 222,
