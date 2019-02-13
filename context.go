@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strconv"
 	"encoding/json"
-	"fmt"
 )
 
 type Context struct {
@@ -15,7 +14,7 @@ type Context struct {
 	params map[string]interface{}
 }
 
-func NewContext(app *Application, w http.ResponseWriter, r *http.Request, params map[string]interface{}) *Context {
+func newContext(app *Application, w http.ResponseWriter, r *http.Request, params map[string]interface{}) *Context {
 	req := newRequest(app, r)
 	res := newResponse(app, w, r)
 	return &Context{req: req, app: app, res: res, params: params}
@@ -27,12 +26,16 @@ func (c *Context) GetParam(key, defaultValue string) (value string) {
 		value = jv
 	case int:
 		value = strconv.Itoa(jv)
+	case int32:
+		value = strconv.Itoa(int(jv))
+	case int64:
+		value = strconv.Itoa(int(jv))
 	case float64:
 		value = strconv.FormatFloat(jv, 'f', -1, 64)
 	case float32:
 		value = strconv.FormatFloat(float64(jv), 'f', -1, 64)
 	default:
-		fmt.Println("jv===", jv)
+		value = ""
 	}
 	if len(value) == 0 {
 		return defaultValue
@@ -123,7 +126,10 @@ func (c *Context) Download(filePath string) {
 	c.res.download(filePath)
 }
 
-func (c *Context) JsonResponse(data map[string]interface{}) *Context {
+func (c *Context) JsonResponse(data map[string]interface{}) {
 	c.res.jsonResponse(data)
-	return c
+}
+
+func (c *Context) Body(body string) {
+	c.res.textResponse(body)
 }

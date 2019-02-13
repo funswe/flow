@@ -77,7 +77,7 @@ func (r *request) getQuery() url.Values {
 }
 
 func (r *request) getQuerystring() string {
-	return r.req.URL.RequestURI()
+	return r.req.URL.RawQuery
 }
 
 func (r *request) getHostname() string {
