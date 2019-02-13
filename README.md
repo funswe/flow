@@ -2,8 +2,8 @@
 golang web frame as like koajs（洋葱圈模型）
 
 # 安装
-go get -d github.com/zhangmingfeng/flow
-go get -d github.com/julienschmidt/httprouter （路由处理：[httprouter](https://github.com/julienschmidt/httprouter)）
+- go get -d github.com/zhangmingfeng/flow
+- go get -d github.com/julienschmidt/httprouter （路由处理：[httprouter](https://github.com/julienschmidt/httprouter)）
 
 # 示例1
 ```
