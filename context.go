@@ -1,10 +1,10 @@
 package flow
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
-	"encoding/json"
 )
 
 type Context struct {

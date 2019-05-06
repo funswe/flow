@@ -1,11 +1,11 @@
 package flow
 
 import (
-	"net/http"
 	"fmt"
+	"net/http"
 	"net/url"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type request struct {
