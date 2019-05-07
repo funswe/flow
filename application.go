@@ -1,11 +1,11 @@
 package flow
 
 import (
-	"net/http"
-	"github.com/julienschmidt/httprouter"
-	"strings"
-	"io/ioutil"
 	"encoding/json"
+	"github.com/julienschmidt/httprouter"
+	"io/ioutil"
+	"net/http"
+	"strings"
 )
 
 type Next func()
