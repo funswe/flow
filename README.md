@@ -72,7 +72,7 @@ func main() {
 	app.Run(":12345")
 }
 ```
-启动程序，在浏览器里访问http://localhost:12345/test/hello?age=30，可以看到浏览器返回{"age":30,"name":"zhang"}
+启动程序，在浏览器里访问http://localhost:12345/test/hello?age=30，可以看到浏览器返回{"age":30,"name":"hello"}
 
 # API
 
