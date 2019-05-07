@@ -20,7 +20,11 @@ func newContext(app *Application, w http.ResponseWriter, r *http.Request, params
 	return &Context{req: req, app: app, res: res, params: params}
 }
 
-func (c *Context) GetParam(key, defaultValue string) (value string) {
+func (c *Context) GetParam(key string) (value string) {
+	return c.GetParamDefault(key, "")
+}
+
+func (c *Context) GetParamDefault(key, defaultValue string) (value string) {
 	switch jv := c.params[key].(type) {
 	case string:
 		value = jv
@@ -33,7 +37,7 @@ func (c *Context) GetParam(key, defaultValue string) (value string) {
 	case float64:
 		value = strconv.FormatFloat(jv, 'f', -1, 64)
 	case float32:
-		value = strconv.FormatFloat(float64(jv), 'f', -1, 64)
+		value = strconv.FormatFloat(float64(jv), 'f', -1, 32)
 	default:
 		value = ""
 	}
