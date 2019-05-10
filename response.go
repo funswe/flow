@@ -1,8 +1,8 @@
 package flow
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/zhangmingfeng/flow/utils/json"
 	"net/http"
 	"os"
 	"path/filepath"

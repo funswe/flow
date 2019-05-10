@@ -1,7 +1,7 @@
 package flow
 
 import (
-	"encoding/json"
+	"github.com/zhangmingfeng/flow/utils/json"
 	"net/http"
 	"net/url"
 	"strconv"

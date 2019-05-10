@@ -1,8 +1,8 @@
 package flow
 
 import (
-	"encoding/json"
 	"github.com/julienschmidt/httprouter"
+	"github.com/zhangmingfeng/flow/utils/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
