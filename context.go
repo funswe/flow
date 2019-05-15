@@ -1,10 +1,13 @@
 package flow
 
 import (
+	"github.com/julienschmidt/httprouter"
 	"github.com/zhangmingfeng/flow/utils/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 type Context struct {
@@ -14,10 +17,33 @@ type Context struct {
 	params map[string]interface{}
 }
 
-func newContext(app *Application, w http.ResponseWriter, r *http.Request, params map[string]interface{}) *Context {
+func newContext(app *Application, w http.ResponseWriter, r *http.Request, params httprouter.Params) *Context {
 	req := newRequest(app, r)
 	res := newResponse(app, w, r)
-	return &Context{req: req, app: app, res: res, params: params}
+	r.ParseForm()
+	mapParams := make(map[string]interface{})
+	if len(params) > 0 {
+		for i := range params {
+			mapParams[params[i].Key] = params[i].Value
+		}
+	}
+	for k := range r.Form {
+		mapParams[k] = r.FormValue(k)
+	}
+	// handle json request, json data replace form data
+	if r.Body != nil && strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		result, err := ioutil.ReadAll(r.Body)
+		if err == nil && len(result) > 0 {
+			jsonMap := make(map[string]interface{})
+			err = json.Unmarshal(result, &jsonMap)
+			if err == nil {
+				for k := range jsonMap {
+					mapParams[k] = jsonMap[k]
+				}
+			}
+		}
+	}
+	return &Context{req: req, app: app, res: res, params: mapParams}
 }
 
 func (c *Context) GetParam(key string) (value string) {
