@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/zhangmingfeng/flow"
+	"github.com/funswe/flow"
 )
 
 type request struct {
