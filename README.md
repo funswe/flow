@@ -22,9 +22,9 @@ func main() {
 func main() {
 	app := flow.New(false)
 	app.POST("/test/:name", func(ctx *flow.Context) {
-		fmt.Println("name===", ctx.GetParam("name", ""))
+		fmt.Println("name===", ctx.GetParam("name"))
 		ctx.JsonResponse(map[string]interface{}{
-			"name": ctx.GetParam("name", ""),
+			"name": ctx.GetParam("name"),
 		})
 	})
 	app.Use(func(ctx *flow.Context, next flow.Next) {
