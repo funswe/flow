@@ -19,7 +19,6 @@ func main() {
 			"name": req.Name,
 			"age":  req.Age,
 		})
-
 	}).POST("/test/:name", func(ctx *flow.Context) {
 		req := &request{}
 		ctx.ParseStructure(req)
