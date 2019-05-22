@@ -1,10 +1,27 @@
 package flow
 
 import (
+	"flag"
+	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
+
+var (
+	proxy    bool
+	address  string
+	viewPath string
+)
+
+func init() {
+	flag.BoolVar(&proxy, "proxy", false, "set proxy mode")
+	flag.StringVar(&address, "address", "localhost:12345", "set listen address")
+	path, _ := filepath.Abs(".")
+	flag.StringVar(&viewPath, "view-path", filepath.Join(path, "views"), "set view path")
+	flag.Parse()
+}
 
 type Next func()
 
@@ -14,19 +31,39 @@ type Handler func(ctx *Context)
 
 type Application struct {
 	proxy      bool
+	address    string
+	viewPath   string
 	middleware []Middleware
 	router     *httprouter.Router
 }
 
-func New(proxy bool) *Application {
+func New() *Application {
+	fmt.Println(proxy, address, viewPath)
 	return &Application{
-		proxy:  proxy,
-		router: httprouter.New(),
+		proxy:    proxy,
+		address:  address,
+		viewPath: viewPath,
+		router:   httprouter.New(),
 	}
 }
 
-func (app *Application) Run(addr string) error {
-	return http.ListenAndServe(addr, app.router)
+func (app *Application) SetProxy(proxy bool) *Application {
+	app.proxy = proxy
+	return app
+}
+
+func (app *Application) SetAddress(address string) *Application {
+	app.address = address
+	return app
+}
+
+func (app *Application) SetViewPath(viewPath string) *Application {
+	app.viewPath = viewPath
+	return app
+}
+
+func (app *Application) Run() error {
+	return http.ListenAndServe(app.address, app.router)
 }
 
 func (app *Application) Use(m Middleware) *Application {
@@ -36,6 +73,10 @@ func (app *Application) Use(m Middleware) *Application {
 
 func (app *Application) GetProxy() bool {
 	return app.proxy
+}
+
+func (app *Application) GetViewPath() string {
+	return app.viewPath
 }
 
 func (app *Application) dispatch(ctx *Context, index int, handler Handler) Next {

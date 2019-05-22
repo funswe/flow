@@ -60,13 +60,13 @@ func (r *response) download(filePath string) {
 	http.ServeFile(r.res, r.req, filePath)
 }
 
-func (r *response) jsonResponse(data map[string]interface{}) {
+func (r *response) json(data map[string]interface{}) {
 	body, _ := json.Marshal(data)
 	r.setHeader("Content-Type", "application/json; charset=utf-8")
 	r.res.Write(body)
 }
 
-func (r *response) textResponse(data string) {
+func (r *response) text(data string) {
 	r.setHeader("Content-Type", "text/plain; charset=utf-8")
 	r.res.Write([]byte(data))
 }

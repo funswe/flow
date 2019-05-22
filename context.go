@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"github.com/flosch/pongo2"
 )
 
 type Context struct {
@@ -30,7 +31,7 @@ func newContext(app *Application, w http.ResponseWriter, r *http.Request, params
 	for k := range r.Form {
 		mapParams[k] = r.FormValue(k)
 	}
-	// handle json request, json data replace form data
+	// 如果是json请求，解析json数据，如果form参数和json参数相同，json参数覆盖form参数
 	if r.Body != nil && strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		result, err := ioutil.ReadAll(r.Body)
 		if err == nil && len(result) > 0 {
@@ -73,7 +74,7 @@ func (c *Context) GetParamDefault(key, defaultValue string) (value string) {
 	return
 }
 
-func (c *Context) ParseStructure(object interface{}) {
+func (c *Context) Parse(object interface{}) {
 	body, err := json.Marshal(c.params)
 	if err != nil {
 		return
@@ -156,10 +157,15 @@ func (c *Context) Download(filePath string) {
 	c.res.download(filePath)
 }
 
-func (c *Context) JsonResponse(data map[string]interface{}) {
-	c.res.jsonResponse(data)
+func (c *Context) Json(data map[string]interface{}) {
+	c.res.json(data)
 }
 
 func (c *Context) Body(body string) {
-	c.res.textResponse(body)
+	c.res.text(body)
+}
+
+func (c *Context) Render(tmpFile string) {
+
+
 }
