@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"github.com/flosch/pongo2"
 )
 
 type Context struct {
@@ -165,7 +164,6 @@ func (c *Context) Body(body string) {
 	c.res.text(body)
 }
 
-func (c *Context) Render(tmpFile string) {
-
-
+func (c *Context) Render(tmpFile string, data map[string]interface{}) {
+	c.res.render(tmpFile, data)
 }

@@ -2,6 +2,7 @@ package flow
 
 import (
 	"fmt"
+	"github.com/flosch/pongo2"
 	"github.com/funswe/flow/utils/json"
 	"net/http"
 	"os"
@@ -69,4 +70,15 @@ func (r *response) json(data map[string]interface{}) {
 func (r *response) text(data string) {
 	r.setHeader("Content-Type", "text/plain; charset=utf-8")
 	r.res.Write([]byte(data))
+}
+
+func (r *response) render(tmpFile string, data map[string]interface{}) {
+	tpl, err := pongo2.FromCache(filepath.Join(r.app.GetViewPath(), tmpFile))
+	if err != nil {
+		panic(err)
+	}
+	err = tpl.ExecuteWriter(data, r.res)
+	if err != nil {
+		panic(err)
+	}
 }
