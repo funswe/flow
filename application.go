@@ -1,11 +1,11 @@
 package flow
 
 import (
-	"flag"
 	"github.com/funswe/flow/log"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 )
 
@@ -20,24 +20,20 @@ const (
 )
 
 var (
-	appName  string
-	proxy    bool
-	address  string
-	viewPath string
-	logPath  string
+	logFactory *log.Logger
+	reqId      int64
+	reqChan    = make(chan int64)
 )
 
-func init() {
-	flag.StringVar(&appName, "app-name", "flow", "set app name")
-	flag.BoolVar(&proxy, "proxy", false, "set proxy mode")
-	flag.StringVar(&address, "address", "localhost:12345", "set listen address")
-	path, _ := filepath.Abs(".")
-	flag.StringVar(&viewPath, "view-path", filepath.Join(path, "views"), "set view path")
-	flag.StringVar(&logPath, "log-path", filepath.Join(path, "logs"), "set log path")
-	flag.Parse()
-}
-
 type Next func()
+
+type PanicHandler func(http.ResponseWriter, *http.Request, interface{})
+
+type NotFoundHandle func(w http.ResponseWriter, r *http.Request)
+
+func (f NotFoundHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f(w, r)
+}
 
 type Middleware func(ctx *Context, next Next)
 
@@ -49,46 +45,86 @@ type Application struct {
 	address    string
 	viewPath   string
 	logPath    string
-	log        *log.Log
+	logger     *log.Logger
 	middleware []Middleware
 	router     *httprouter.Router
 }
 
-func New() *Application {
-	log := log.New(logPath, "flow.log")
-	log = log.Create(map[string]interface{}{
-		"proxy":    proxy,
-		"address":  address,
-		"viewPath": viewPath,
-		"logPath":  logPath,
-	})
-	log.Infoln("start params: ")
-	return &Application{
-		proxy:    proxy,
-		address:  address,
-		viewPath: viewPath,
-		logPath:  logPath,
-		log:      log,
-		router:   httprouter.New(),
+func defaultErrorHandle() PanicHandler {
+	return func(w http.ResponseWriter, r *http.Request, err interface{}) {
+		logFactory.Error(err, "\n", string(debug.Stack()))
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(500)
+		w.Write([]byte("unknown server error"))
 	}
 }
 
-func (app *Application) SetProxy(proxy bool) *Application {
-	app.proxy = proxy
-	return app
+func defaultNotFoundHandle() NotFoundHandle {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(404)
+		w.Write([]byte("404 page not found"))
+	}
 }
 
-func (app *Application) SetAddress(address string) *Application {
-	app.address = address
-	return app
+func defaultAppName() string {
+	return "flow"
 }
 
-func (app *Application) SetViewPath(viewPath string) *Application {
-	app.viewPath = viewPath
-	return app
+func defaultProxy() bool {
+	return false
+}
+
+func defaultAddress() string {
+	return "localhost:12345"
+}
+
+func defaultViewPath() string {
+	path, _ := filepath.Abs(".")
+	return filepath.Join(path, "views")
+}
+
+func defaultLogPath() string {
+	path, _ := filepath.Abs(".")
+	return filepath.Join(path, "logs")
+}
+
+func New() *Application {
+	router := httprouter.New()
+	router.PanicHandler = defaultErrorHandle()
+	router.NotFound = defaultNotFoundHandle()
+	return &Application{
+		appName:  defaultAppName(),
+		proxy:    defaultProxy(),
+		address:  defaultAddress(),
+		viewPath: defaultViewPath(),
+		logPath:  defaultLogPath(),
+		router:   router,
+	}
+}
+
+func (app *Application) init() {
+	logFactory = log.New(app.GetLogPath(), app.GetAppName()+".log")
+	app.logger = logFactory.Create(map[string]interface{}{
+		"appName":  app.GetAppName(),
+		"proxy":    app.GetProxy(),
+		"address":  app.GetAddress(),
+		"viewPath": app.GetViewPath(),
+		"logPath":  app.GetLogPath(),
+	})
+	app.logger.Info("start params")
+	// 启动一个独立的携程处理请求ID的递增
+	go func() {
+		for {
+			reqId++
+			reqChan <- reqId
+		}
+	}()
 }
 
 func (app *Application) Run() error {
+	app.init()
 	return http.ListenAndServe(app.address, app.router)
 }
 
@@ -97,12 +133,66 @@ func (app *Application) Use(m Middleware) *Application {
 	return app
 }
 
+func (app *Application) GetAppName() string {
+	return app.appName
+}
+
+func (app *Application) SetAppName(appName string) *Application {
+	if len(appName) <= 0 {
+		return app
+	}
+	app.appName = appName
+	return app
+}
+
 func (app *Application) GetProxy() bool {
 	return app.proxy
 }
 
+func (app *Application) SetProxy(proxy bool) *Application {
+	app.proxy = proxy
+	return app
+}
+
+func (app *Application) GetAddress() string {
+	return app.address
+}
+
+func (app *Application) SetAddress(address string) *Application {
+	if len(address) <= 0 {
+		return app
+	}
+	app.address = address
+	return app
+}
+
 func (app *Application) GetViewPath() string {
 	return app.viewPath
+}
+
+func (app *Application) SetViewPath(viewPath string) *Application {
+	if len(viewPath) <= 0 {
+		return app
+	}
+	app.viewPath = viewPath
+	return app
+}
+
+func (app *Application) GetLogPath() string {
+	return app.logPath
+}
+
+func (app *Application) SetLogPath(logPath string) *Application {
+	if len(logPath) <= 0 {
+		return app
+	}
+	app.logPath = logPath
+	return app
+}
+
+func (app *Application) SetPanicHandler(panicHandler PanicHandler) *Application {
+	app.router.PanicHandler = panicHandler
+	return app
 }
 
 func (app *Application) dispatch(ctx *Context, index int, handler Handler) Next {
@@ -118,7 +208,7 @@ func (app *Application) dispatch(ctx *Context, index int, handler Handler) Next 
 
 func (app *Application) handle(handler Handler) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-		ctx := newContext(app, w, r, params)
+		ctx := newContext(app, w, r, params, <-reqChan)
 		app.dispatch(ctx, 0, handler)()
 	}
 }

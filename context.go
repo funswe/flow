@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"github.com/funswe/flow/log"
 	"github.com/funswe/flow/utils/json"
 	"github.com/julienschmidt/httprouter"
 	"io/ioutil"
@@ -14,11 +15,12 @@ type Context struct {
 	app    *Application
 	req    *request
 	res    *response
+	Logger *log.Logger
 	params map[string]interface{}
 }
 
-func newContext(app *Application, w http.ResponseWriter, r *http.Request, params httprouter.Params) *Context {
-	req := newRequest(app, r)
+func newContext(app *Application, w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64) *Context {
+	req := newRequest(app, r, reqId)
 	res := newResponse(app, w, r)
 	r.ParseForm()
 	mapParams := make(map[string]interface{})
@@ -43,7 +45,10 @@ func newContext(app *Application, w http.ResponseWriter, r *http.Request, params
 			}
 		}
 	}
-	return &Context{req: req, app: app, res: res, params: mapParams}
+	return &Context{req: req, app: app, res: res, params: mapParams, Logger: logFactory.Create(map[string]interface{}{
+		"reqId": req.id,
+		"ua":    req.getUserAgent(),
+	})}
 }
 
 func (c *Context) GetParam(key string) (value string) {
@@ -73,12 +78,12 @@ func (c *Context) GetParamDefault(key, defaultValue string) (value string) {
 	return
 }
 
-func (c *Context) Parse(object interface{}) {
+func (c *Context) Parse(object interface{}) error {
 	body, err := json.Marshal(c.params)
 	if err != nil {
-		return
+		return err
 	}
-	json.Unmarshal(body, object)
+	return json.Unmarshal(body, object)
 }
 
 func (c *Context) GetHeaders() map[string][]string {
@@ -131,6 +136,10 @@ func (c *Context) GetHostname() string {
 
 func (c *Context) GetLength() int {
 	return c.req.getLength()
+}
+
+func (c *Context) GetUserAgent() string {
+	return c.req.getUserAgent()
 }
 
 func (c *Context) SetHeader(key, value string) *Context {

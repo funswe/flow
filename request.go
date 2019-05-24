@@ -11,10 +11,11 @@ import (
 type request struct {
 	app *Application
 	req *http.Request
+	id  int64
 }
 
-func newRequest(app *Application, r *http.Request) *request {
-	return &request{app, r}
+func newRequest(app *Application, r *http.Request, id int64) *request {
+	return &request{app, r, id}
 }
 
 func (r *request) getHeaders() map[string][]string {
@@ -99,4 +100,8 @@ func (r *request) getLength() (l int) {
 	}
 	l, _ = strconv.Atoi(length)
 	return
+}
+
+func (r *request) getUserAgent() string {
+	return r.req.UserAgent()
 }

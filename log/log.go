@@ -1,32 +1,34 @@
 package log
 
 import (
-	"fmt"
+	"bytes"
 	"github.com/funswe/flow/utils/json"
 	"github.com/lestrrat-go/file-rotatelogs"
-	"github.com/pkg/errors"
 	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
 	"os"
 	"path"
+	"strings"
 )
 
-type Log struct {
+type Logger struct {
 	*logrus.Entry
 }
 
-func New(logPath, logFileName string) *Log {
+// 定义日志格式化
+type MyFormatter struct {
+}
+
+func New(logPath, logFileName string) *Logger {
 	if !pathExists(logPath) {
 		os.MkdirAll(logPath, os.ModePerm)
 	}
-	baseLogPaht := path.Join(logPath, logFileName)
-	writer, err := rotatelogs.New(
-		baseLogPaht+".%Y-%m-%d",
-		rotatelogs.WithLinkName(baseLogPaht),
+	baseLogPath := path.Join(logPath, logFileName)
+	writer, _ := rotatelogs.New(
+		baseLogPath+".%Y-%m-%d",
+		rotatelogs.WithLinkName(baseLogPath),
 	)
-	if err != nil {
-		logrus.Errorf("config local file system logger error. %+v", errors.WithStack(err))
-	}
+	format := new(MyFormatter)
 	lfHook := lfshook.NewHook(lfshook.WriterMap{
 		logrus.DebugLevel: writer,
 		logrus.InfoLevel:  writer,
@@ -34,38 +36,41 @@ func New(logPath, logFileName string) *Log {
 		logrus.ErrorLevel: writer,
 		logrus.FatalLevel: writer,
 		logrus.PanicLevel: writer,
-	}, &logrus.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: "2006-01-02 15:04:05",
-	})
+	}, format)
 	logger := logrus.New()
-	logger.SetFormatter(new(MyJSONFormatter))
+	logger.SetFormatter(format)
 	logger.AddHook(lfHook)
-	log := &Log{&logrus.Entry{}}
-	log.Logger = logger
-	return log
+	return &Logger{&logrus.Entry{Logger: logger}}
 }
 
-func (l *Log) Create(fields logrus.Fields) *Log {
+func (l *Logger) Create(fields logrus.Fields) *Logger {
 	e := l.WithFields(fields)
-	return &Log{
-		e,
-	}
+	return &Logger{e}
 }
 
-type MyJSONFormatter struct {
-}
-
-func (f *MyJSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	// Note this doesn't include Time, Level and Message which are available on
-	// the Entry. Consult `godoc` on information about those fields or read the
-	// source of the official loggers.
-	fmt.Println(entry)
-	serialized, err := json.Marshal(entry.Data)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal fields to JSON, %v", err)
+func (f *MyFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	var b *bytes.Buffer
+	if entry.Buffer != nil {
+		b = entry.Buffer
+	} else {
+		b = &bytes.Buffer{}
 	}
-	return append(serialized, '\n'), nil
+	logTime := entry.Time.Format("2006-01-02 15:04:05.000")
+	b.WriteString(logTime)
+	b.WriteByte('[')
+	logLevel := entry.Level.String()
+	b.WriteString(strings.ToUpper(logLevel))
+	b.WriteByte(']')
+	b.WriteByte(' ')
+	logMsg := entry.Message
+	b.WriteString(logMsg)
+	if len(entry.Data) > 0 {
+		logData, _ := json.Marshal(entry.Data)
+		b.WriteByte(' ')
+		b.Write(logData)
+	}
+	b.WriteByte('\n')
+	return b.Bytes(), nil
 }
 
 func pathExists(path string) bool {

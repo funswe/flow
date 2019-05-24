@@ -22,6 +22,7 @@ func main() {
 			Age:  12,
 			Name: "zhangmingfeng",
 		}
+		ctx.Logger.Info(111)
 		ctx.Render("index.html", m)
 	})
 	app.GET("/test/:name", func(ctx *flow.Context) {
