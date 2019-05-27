@@ -77,7 +77,7 @@ func defaultProxy() bool {
 }
 
 func defaultAddress() string {
-	return "localhost:12345"
+	return "localhost:9505"
 }
 
 func defaultViewPath() string {

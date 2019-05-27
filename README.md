@@ -2,28 +2,28 @@
 golang web frame as like koajs（洋葱圈模型）
 
 # 安装
-- go get -d github.com/funswe/flow
+- go get -u github.com/funswe/flow
 
 # 示例1
 ```
 func main() {
-	app := flow.New(false)
-	app.POST("/hello", func(ctx *flow.Context) {
+	app := flow.New()
+	app.ALL("/hello", func(ctx *flow.Context) {
 		ctx.Body("hello,world")
 	})
 	fmt.Println("启动...")
-	app.Run(":12345")
+	log.Fatal(app.Run())
 }
 ```
-启动程序，在浏览器里访问http://localhost:12345/test/hello，可以看到浏览器返回hello,world
+启动程序，在浏览器里访问http://localhost:9505/hello，可以看到浏览器返回hello,world
 
 # 示例2
 ```
 func main() {
-	app := flow.New(false)
-	app.POST("/test/:name", func(ctx *flow.Context) {
+	app := flow.New()
+	app.GET("/test/:name", func(ctx *flow.Context) {
 		fmt.Println("name===", ctx.GetParam("name"))
-		ctx.JsonResponse(map[string]interface{}{
+		ctx.Json(map[string]interface{}{
 			"name": ctx.GetParam("name"),
 		})
 	})
@@ -33,10 +33,10 @@ func main() {
 		fmt.Println("mid1->end,time===", time.Now().UnixNano())
 	})
 	fmt.Println("启动...")
-	app.Run(":12345")
+	log.Fatal(app.Run())
 }
 ```
-启动程序，在浏览器里访问http://localhost:12345/test/hello，可以看到浏览器返回{"name":"hello"}，终端打印
+启动程序，在浏览器里访问http://localhost:9505/test/hello，可以看到浏览器返回{"name":"hello"}，终端打印
 ```
 mid1->start,time== 1550045289462400763
 name=== hello
@@ -51,27 +51,20 @@ type request struct {
 }
 
 func main() {
-	app := flow.New(false)
+	app := flow.New()
 	app.GET("/test/:name", func(ctx *flow.Context) {
        	req := &request{}
-       	ctx.ParseStructure(req)
-       	ctx.JsonResponse(map[string]interface{}{
+       	ctx.Parse(req)
+       	ctx.Json(map[string]interface{}{
        		"name": req.Name,
        		"age":  req.Age,
        	})
-    }).POST("/test/:name", func(ctx *flow.Context) {
-		req := &request{}
-		ctx.ParseStructure(req)
-		ctx.JsonResponse(map[string]interface{}{
-			"name": req.Name,
-			"age":  req.Age,
-		})
-	})
+    })
 	fmt.Println("启动...")
-	app.Run(":12345")
+	log.Fatal(app.Run())
 }
 ```
-启动程序，在浏览器里访问http://localhost:12345/test/hello?age=30，可以看到浏览器返回{"age":30,"name":"hello"}
+启动程序，在浏览器里访问http://localhost:9505/test/hello?age=30，可以看到浏览器返回{"age":30,"name":"hello"}
 
 # API
 
@@ -114,7 +107,7 @@ func main() {
 ## ctx.GetParam
 获取请求参数，包括通配路由字段，json字段，query字段，form表单字段
 
-## ctx.ParseStructure
+## ctx.Parse
 将请求参数赋值到定义的结构体中，如示例3所示，方便管理请求数据
 
 ## ctx.GetHeaders
@@ -124,10 +117,10 @@ func main() {
 获取给定的头信息
 
 ## ctx.GetUri
-获取请求的uri，如：http://localhost:12345/test/hello，返回/test/hello
+获取请求的uri，如：http://localhost:9505/test/hello，返回/test/hello
 
 ## ctx.GetHost
-获取请求的主机，如：http://localhost:12345/test/hello，返回localhost:12345
+获取请求的主机，如：http://localhost:9505/test/hello，返回localhost:12345
 
 ## ctx.GetProtocol
 获取请求的协议类型，http|https
@@ -136,10 +129,10 @@ func main() {
 判断是不是安全的连接，当Protocol是https返回true
 
 ## ctx.GetOrigin
-获取请求的源，如：http://localhost:12345/test/hello，返回http://localhost:12345
+获取请求的源，如：http://localhost:9505/test/hello，返回http://localhost:12345
 
 ## ctx.GetHref
-获取请求的连接，如：http://localhost:12345/test/hello，返回http://localhost:12345/test/hello
+获取请求的连接，如：http://localhost:9505/test/hello，返回http://localhost:12345/test/hello
 
 ## ctx.GetMethod
 获取请求的方法
@@ -151,7 +144,7 @@ func main() {
 获取请求的query参数，以字符串方法返回
 
 ## ctx.GetHostname
-获取请求的主机名，如：http://localhost:12345/test/hello，返回localhost
+获取请求的主机名，如：http://localhost:9505/test/hello，返回localhost
 
 ## ctx.GetLength
 获取请求体的长度
@@ -171,10 +164,16 @@ func main() {
 ## ctx.Download
 文件下载
 
-## ctx.JsonResponse
+## ctx.Logger
+获取日志对象
+
+## ctx.Json
 以json方式返回
 
 ## ctx.Body
 以文本方式返回
+
+## ctx.Render
+渲染html,使用的HTML模板[pongo2](https://github.com/flosch/pongo2)
 
 
