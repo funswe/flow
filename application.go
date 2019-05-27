@@ -145,7 +145,6 @@ func Run() error {
 		cost := time.Now().UnixNano() - start
 		ctx.Logger.Debugf("request finish, cost: %d ms", cost/1000000)
 	}}, middleware...)
-
 	return http.ListenAndServe(address, router)
 }
 
@@ -183,6 +182,13 @@ func SetLogPath(lp string) {
 		return
 	}
 	logPath = lp
+}
+
+func SetLoggerLevel(lv string) {
+	if len(lv) <= 0 {
+		return
+	}
+	loggerLevel = lv
 }
 
 func SetPanicHandler(ph PanicHandler) {
