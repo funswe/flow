@@ -138,7 +138,6 @@ func Run() error {
 	}
 	router.PanicHandler = panicHandler
 	router.NotFound = notFoundHandle
-
 	middleware = append([]Middleware{func(ctx *Context, next Next) {
 		start := time.Now().UnixNano()
 		ctx.Logger.Debugf("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
@@ -146,7 +145,6 @@ func Run() error {
 		cost := time.Now().UnixNano() - start
 		ctx.Logger.Debugf("request finish, cost: %d ms", cost/1000000)
 	}}, middleware...)
-
 	return http.ListenAndServe(address, router)
 }
 
