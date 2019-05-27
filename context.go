@@ -44,10 +44,11 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 			}
 		}
 	}
-	return &Context{req: req, res: res, params: mapParams, Logger: logger.Create(map[string]interface{}{
+	ctxLogger := logFactory.Create(map[string]interface{}{
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
-	})}
+	})
+	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger}
 }
 
 func (c *Context) GetParam(key string) (value string) {

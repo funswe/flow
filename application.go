@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"time"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 )
 
 var (
+	logFactory     *log.Logger
 	logger         *log.Logger
 	reqId          int64
 	rc             = make(chan int64)
@@ -28,6 +30,7 @@ var (
 	address        string
 	viewPath       string
 	logPath        string
+	loggerLevel    string
 	middleware     []Middleware
 	router         = httprouter.New()
 	panicHandler   PanicHandler
@@ -50,7 +53,7 @@ type Handler func(ctx *Context)
 
 func defaultErrorHandle() PanicHandler {
 	return func(w http.ResponseWriter, r *http.Request, err interface{}) {
-		logger.Error(err, "\n", string(debug.Stack()))
+		logFactory.Error(err, "\n", string(debug.Stack()))
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(500)
 		w.Write([]byte("unknown server error"))
@@ -88,6 +91,10 @@ func defaultLogPath() string {
 	return filepath.Join(path, "logs")
 }
 
+func defaultLoggerLevel() string {
+	return "debug"
+}
+
 func Run() error {
 	if len(appName) == 0 {
 		appName = defaultAppName()
@@ -104,7 +111,11 @@ func Run() error {
 	if len(logPath) == 0 {
 		logPath = defaultLogPath()
 	}
-	logger = log.New(logPath, appName+".log").Create(map[string]interface{}{
+	if len(loggerLevel) == 0 {
+		loggerLevel = defaultLoggerLevel()
+	}
+	logFactory = log.New(logPath, appName+".log", loggerLevel)
+	logger := logFactory.Create(map[string]interface{}{
 		"appName":  appName,
 		"proxy":    proxy,
 		"address":  address,
@@ -127,6 +138,14 @@ func Run() error {
 	}
 	router.PanicHandler = panicHandler
 	router.NotFound = notFoundHandle
+	middleware = append([]Middleware{func(ctx *Context, next Next) {
+		start := time.Now().UnixNano()
+		ctx.Logger.Debugf("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
+		next()
+		cost := time.Now().UnixNano() - start
+		ctx.Logger.Debugf("request finish, cost: %d ms", cost/1000000)
+	}}, middleware...)
+
 	return http.ListenAndServe(address, router)
 }
 

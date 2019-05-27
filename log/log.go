@@ -19,7 +19,7 @@ type Logger struct {
 type MyFormatter struct {
 }
 
-func New(logPath, logFileName string) *Logger {
+func New(logPath, logFileName, loggerLevel string) *Logger {
 	if !pathExists(logPath) {
 		os.MkdirAll(logPath, os.ModePerm)
 	}
@@ -40,6 +40,11 @@ func New(logPath, logFileName string) *Logger {
 	logger := logrus.New()
 	logger.SetFormatter(format)
 	logger.AddHook(lfHook)
+	level, err := logrus.ParseLevel(loggerLevel)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	logger.SetLevel(level)
 	return &Logger{&logrus.Entry{Logger: logger}}
 }
 
