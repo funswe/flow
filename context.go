@@ -12,16 +12,15 @@ import (
 )
 
 type Context struct {
-	app    *Application
 	req    *request
 	res    *response
 	Logger *log.Logger
 	params map[string]interface{}
 }
 
-func newContext(app *Application, w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64) *Context {
-	req := newRequest(app, r, reqId)
-	res := newResponse(app, w, r)
+func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64) *Context {
+	req := newRequest(r, reqId)
+	res := newResponse(w, r)
 	r.ParseForm()
 	mapParams := make(map[string]interface{})
 	if len(params) > 0 {
@@ -45,7 +44,7 @@ func newContext(app *Application, w http.ResponseWriter, r *http.Request, params
 			}
 		}
 	}
-	return &Context{req: req, app: app, res: res, params: mapParams, Logger: logFactory.Create(map[string]interface{}{
+	return &Context{req: req, res: res, params: mapParams, Logger: logger.Create(map[string]interface{}{
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})}

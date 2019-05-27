@@ -11,13 +11,12 @@ import (
 )
 
 type response struct {
-	app *Application
 	res http.ResponseWriter
 	req *http.Request
 }
 
-func newResponse(app *Application, res http.ResponseWriter, req *http.Request) *response {
-	return &response{app, res, req}
+func newResponse(res http.ResponseWriter, req *http.Request) *response {
+	return &response{res, req}
 }
 
 func (r *response) getHeaders() map[string][]string {
@@ -73,7 +72,7 @@ func (r *response) text(data string) {
 }
 
 func (r *response) render(tmpFile string, data map[string]interface{}) {
-	tpl, err := pongo2.FromCache(filepath.Join(r.app.GetViewPath(), tmpFile))
+	tpl, err := pongo2.FromCache(filepath.Join(viewPath, tmpFile))
 	if err != nil {
 		panic(err)
 	}

@@ -9,13 +9,12 @@ import (
 )
 
 type request struct {
-	app *Application
 	req *http.Request
 	id  int64
 }
 
-func newRequest(app *Application, r *http.Request, id int64) *request {
-	return &request{app, r, id}
+func newRequest(r *http.Request, id int64) *request {
+	return &request{r, id}
 }
 
 func (r *request) getHeaders() map[string][]string {
@@ -31,7 +30,6 @@ func (r *request) getUri() string {
 }
 
 func (r *request) getHost() string {
-	proxy := r.app.GetProxy()
 	var host string
 	if proxy {
 		host = r.getHeader("X-Forwarded-Host")
@@ -51,7 +49,7 @@ func (r *request) getProtocol() string {
 	if r.req.TLS != nil {
 		return "https"
 	}
-	if !r.app.GetProxy() {
+	if !proxy {
 		return "http"
 	}
 	return r.getHeader("X-Forwarded-Proto")

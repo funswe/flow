@@ -12,8 +12,7 @@ type request struct {
 }
 
 func main() {
-	app := flow.New()
-	app.GET("/", func(ctx *flow.Context) {
+	flow.GET("/", func(ctx *flow.Context) {
 		m := make(map[string]interface{})
 		m["m"] = map[string]string{
 			"body": "map-body",
@@ -25,14 +24,15 @@ func main() {
 		ctx.Logger.Info(111)
 		ctx.Render("index.html", m)
 	})
-	app.GET("/test/:name", func(ctx *flow.Context) {
+	flow.GET("/test/:name", func(ctx *flow.Context) {
 		req := &request{}
 		ctx.Parse(req)
 		ctx.Json(map[string]interface{}{
 			"name": req.Name,
 			"age":  req.Age,
 		})
-	}).POST("/test/:name", func(ctx *flow.Context) {
+	})
+	flow.POST("/test/:name", func(ctx *flow.Context) {
 		req := &request{}
 		ctx.Parse(req)
 		ctx.Json(map[string]interface{}{
@@ -41,7 +41,7 @@ func main() {
 		})
 	})
 	fmt.Println("启动...")
-	err := app.Run()
+	err := flow.Run()
 	if err != nil {
 		log.Fatal(err)
 	}

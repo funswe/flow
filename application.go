@@ -20,9 +20,18 @@ const (
 )
 
 var (
-	logFactory *log.Logger
-	reqId      int64
-	reqChan    = make(chan int64)
+	logger         *log.Logger
+	reqId          int64
+	rc             = make(chan int64)
+	appName        string
+	proxy          bool
+	address        string
+	viewPath       string
+	logPath        string
+	middleware     []Middleware
+	router         = httprouter.New()
+	panicHandler   PanicHandler
+	notFoundHandle NotFoundHandle
 )
 
 type Next func()
@@ -39,20 +48,9 @@ type Middleware func(ctx *Context, next Next)
 
 type Handler func(ctx *Context)
 
-type Application struct {
-	appName    string
-	proxy      bool
-	address    string
-	viewPath   string
-	logPath    string
-	logger     *log.Logger
-	middleware []Middleware
-	router     *httprouter.Router
-}
-
 func defaultErrorHandle() PanicHandler {
 	return func(w http.ResponseWriter, r *http.Request, err interface{}) {
-		logFactory.Error(err, "\n", string(debug.Stack()))
+		logger.Error(err, "\n", string(debug.Stack()))
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(500)
 		w.Write([]byte("unknown server error"))
@@ -90,165 +88,139 @@ func defaultLogPath() string {
 	return filepath.Join(path, "logs")
 }
 
-func New() *Application {
-	router := httprouter.New()
-	router.PanicHandler = defaultErrorHandle()
-	router.NotFound = defaultNotFoundHandle()
-	return &Application{
-		appName:  defaultAppName(),
-		proxy:    defaultProxy(),
-		address:  defaultAddress(),
-		viewPath: defaultViewPath(),
-		logPath:  defaultLogPath(),
-		router:   router,
+func Run() error {
+	if len(appName) == 0 {
+		appName = defaultAppName()
 	}
-}
-
-func (app *Application) init() {
-	logFactory = log.New(app.GetLogPath(), app.GetAppName()+".log")
-	app.logger = logFactory.Create(map[string]interface{}{
-		"appName":  app.GetAppName(),
-		"proxy":    app.GetProxy(),
-		"address":  app.GetAddress(),
-		"viewPath": app.GetViewPath(),
-		"logPath":  app.GetLogPath(),
+	if !proxy {
+		proxy = defaultProxy()
+	}
+	if len(address) == 0 {
+		address = defaultAddress()
+	}
+	if len(viewPath) == 0 {
+		viewPath = defaultViewPath()
+	}
+	if len(logPath) == 0 {
+		logPath = defaultLogPath()
+	}
+	logger = log.New(logPath, appName+".log").Create(map[string]interface{}{
+		"appName":  appName,
+		"proxy":    proxy,
+		"address":  address,
+		"viewPath": viewPath,
+		"logPath":  logPath,
 	})
-	app.logger.Info("start params")
+	logger.Info("start params")
 	// 启动一个独立的携程处理请求ID的递增
 	go func() {
 		for {
 			reqId++
-			reqChan <- reqId
+			rc <- reqId
 		}
 	}()
-}
-
-func (app *Application) Run() error {
-	app.init()
-	return http.ListenAndServe(app.address, app.router)
-}
-
-func (app *Application) Use(m Middleware) *Application {
-	app.middleware = append(app.middleware, m)
-	return app
-}
-
-func (app *Application) GetAppName() string {
-	return app.appName
-}
-
-func (app *Application) SetAppName(appName string) *Application {
-	if len(appName) <= 0 {
-		return app
+	if panicHandler == nil {
+		panicHandler = defaultErrorHandle()
 	}
-	app.appName = appName
-	return app
-}
-
-func (app *Application) GetProxy() bool {
-	return app.proxy
-}
-
-func (app *Application) SetProxy(proxy bool) *Application {
-	app.proxy = proxy
-	return app
-}
-
-func (app *Application) GetAddress() string {
-	return app.address
-}
-
-func (app *Application) SetAddress(address string) *Application {
-	if len(address) <= 0 {
-		return app
+	if notFoundHandle == nil {
+		notFoundHandle = defaultNotFoundHandle()
 	}
-	app.address = address
-	return app
+	router.PanicHandler = panicHandler
+	router.NotFound = notFoundHandle
+	return http.ListenAndServe(address, router)
 }
 
-func (app *Application) GetViewPath() string {
-	return app.viewPath
+func Use(m Middleware) {
+	middleware = append(middleware, m)
 }
 
-func (app *Application) SetViewPath(viewPath string) *Application {
-	if len(viewPath) <= 0 {
-		return app
+func SetAppName(a string) {
+	if len(a) <= 0 {
+		return
 	}
-	app.viewPath = viewPath
-	return app
+	appName = a
 }
 
-func (app *Application) GetLogPath() string {
-	return app.logPath
+func SetProxy(p bool) {
+	proxy = p
 }
 
-func (app *Application) SetLogPath(logPath string) *Application {
-	if len(logPath) <= 0 {
-		return app
+func SetAddress(addr string) {
+	if len(addr) <= 0 {
+		return
 	}
-	app.logPath = logPath
-	return app
+	address = addr
 }
 
-func (app *Application) SetPanicHandler(panicHandler PanicHandler) *Application {
-	app.router.PanicHandler = panicHandler
-	return app
+func SetViewPath(vp string) {
+	if len(vp) <= 0 {
+		return
+	}
+	viewPath = vp
 }
 
-func (app *Application) dispatch(ctx *Context, index int, handler Handler) Next {
-	if index >= len(app.middleware) {
+func SetLogPath(lp string) {
+	if len(lp) <= 0 {
+		return
+	}
+	logPath = lp
+}
+
+func SetPanicHandler(ph PanicHandler) {
+	panicHandler = ph
+}
+
+func SetNotFoundHandle(nfh NotFoundHandle) {
+	notFoundHandle = nfh
+}
+
+func dispatch(ctx *Context, index int, handler Handler) Next {
+	if index >= len(middleware) {
 		return func() {
 			handler(ctx)
 		}
 	}
 	return func() {
-		app.middleware[index](ctx, app.dispatch(ctx, index+1, handler))
+		middleware[index](ctx, dispatch(ctx, index+1, handler))
 	}
 }
 
-func (app *Application) handle(handler Handler) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func handle(handler Handler) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-		ctx := newContext(app, w, r, params, <-reqChan)
-		app.dispatch(ctx, 0, handler)()
+		ctx := newContext(w, r, params, <-rc)
+		dispatch(ctx, 0, handler)()
 	}
 }
 
-func (app *Application) GET(path string, handler Handler) *Application {
-	app.router.Handle(HTTP_METHOD_GET, path, app.handle(handler))
-	return app
+func GET(path string, handler Handler) {
+	router.Handle(HTTP_METHOD_GET, path, handle(handler))
 }
 
-func (app *Application) HEAD(path string, handler Handler) *Application {
-	app.router.Handle(HTTP_METHOD_HEAD, path, app.handle(handler))
-	return app
+func HEAD(path string, handler Handler) {
+	router.Handle(HTTP_METHOD_HEAD, path, handle(handler))
 }
 
-func (app *Application) OPTIONS(path string, handler Handler) *Application {
-	app.router.Handle(HTTP_METHOD_OPTIONS, path, app.handle(handler))
-	return app
+func OPTIONS(path string, handler Handler) {
+	router.Handle(HTTP_METHOD_OPTIONS, path, handle(handler))
 }
 
-func (app *Application) POST(path string, handler Handler) *Application {
-	app.router.Handle(HTTP_METHOD_POST, path, app.handle(handler))
-	return app
+func POST(path string, handler Handler) {
+	router.Handle(HTTP_METHOD_POST, path, handle(handler))
 }
 
-func (app *Application) PUT(path string, handler Handler) *Application {
-	app.router.Handle(HTTP_METHOD_PUT, path, app.handle(handler))
-	return app
+func PUT(path string, handler Handler) {
+	router.Handle(HTTP_METHOD_PUT, path, handle(handler))
 }
 
-func (app *Application) PATCH(path string, handler Handler) *Application {
-	app.router.Handle(HTTP_METHOD_PATCH, path, app.handle(handler))
-	return app
+func PATCH(path string, handler Handler) {
+	router.Handle(HTTP_METHOD_PATCH, path, handle(handler))
 }
 
-func (app *Application) DELETE(path string, handler Handler) *Application {
-	app.router.Handle(HTTP_METHOD_DELETE, path, app.handle(handler))
-	return app
+func DELETE(path string, handler Handler) {
+	router.Handle(HTTP_METHOD_DELETE, path, handle(handler))
 }
 
-func (app *Application) StaticFiles(prefix, path string) *Application {
+func StaticFiles(prefix, path string) {
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
 	}
@@ -256,18 +228,15 @@ func (app *Application) StaticFiles(prefix, path string) *Application {
 		prefix = prefix + "/"
 	}
 	prefix = prefix + "*filepath"
-	app.router.ServeFiles(prefix, http.Dir(path))
-	return app
+	router.ServeFiles(prefix, http.Dir(path))
 }
 
-func (app *Application) ALL(path string, handler Handler) *Application {
-	rHandle := app.handle(handler)
-	app.router.Handle(HTTP_METHOD_GET, path, rHandle)
-	app.router.Handle(HTTP_METHOD_HEAD, path, rHandle)
-	app.router.Handle(HTTP_METHOD_OPTIONS, path, rHandle)
-	app.router.Handle(HTTP_METHOD_POST, path, rHandle)
-	app.router.Handle(HTTP_METHOD_PUT, path, rHandle)
-	app.router.Handle(HTTP_METHOD_PATCH, path, rHandle)
-	app.router.Handle(HTTP_METHOD_DELETE, path, rHandle)
-	return app
+func ALL(path string, handler Handler) {
+	GET(path, handler)
+	HEAD(path, handler)
+	OPTIONS(path, handler)
+	POST(path, handler)
+	PUT(path, handler)
+	PATCH(path, handler)
+	DELETE(path, handler)
 }
