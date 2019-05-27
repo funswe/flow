@@ -143,7 +143,7 @@ func Run() error {
 		ctx.Logger.Debugf("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
 		next()
 		cost := time.Now().UnixNano() - start
-		ctx.Logger.Debugf("request finish, cost: %d ms, statusCode: %d", cost/1000000, ctx.res.getStatusCode())
+		ctx.Logger.Debugf("request finish, cost: %d ms, statusCode: %d", cost/1000000, ctx.GetStatusCode())
 	}}, middleware...)
 	return http.ListenAndServe(address, router)
 }

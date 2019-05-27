@@ -142,6 +142,10 @@ func (c *Context) GetUserAgent() string {
 	return c.req.getUserAgent()
 }
 
+func (c *Context) GetStatusCode() int {
+	return c.res.getStatusCode()
+}
+
 func (c *Context) SetHeader(key, value string) *Context {
 	c.res.setHeader(key, value)
 	return c
