@@ -10,6 +10,16 @@ import (
 	"strconv"
 )
 
+type rwresponse struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (w *rwresponse) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
 type response struct {
 	res http.ResponseWriter
 	req *http.Request
@@ -40,6 +50,14 @@ func (r *response) setStatus(code int) *response {
 func (r *response) setLength(length int) *response {
 	r.setHeader("Content-Length", strconv.Itoa(length))
 	return r
+}
+
+func (r *response) getStatusCode() int {
+	b, ok := r.res.(*rwresponse)
+	if ok {
+		return b.statusCode
+	}
+	return 200
 }
 
 func (r *response) redirect(url string, code int) {

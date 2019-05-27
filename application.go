@@ -143,7 +143,7 @@ func Run() error {
 		ctx.Logger.Debugf("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
 		next()
 		cost := time.Now().UnixNano() - start
-		ctx.Logger.Debugf("request finish, cost: %d ms", cost/1000000)
+		ctx.Logger.Debugf("request finish, cost: %d ms, statusCode: %d", cost/1000000, ctx.res.getStatusCode())
 	}}, middleware...)
 	return http.ListenAndServe(address, router)
 }
@@ -212,7 +212,8 @@ func dispatch(ctx *Context, index int, handler Handler) Next {
 
 func handle(handler Handler) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-		ctx := newContext(w, r, params, <-rc)
+		rwr := rwresponse{w, 200}
+		ctx := newContext(&rwr, r, params, <-rc)
 		dispatch(ctx, 0, handler)()
 	}
 }
