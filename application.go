@@ -124,7 +124,7 @@ func Run() error {
 	}
 	if len(staticPath) == 0 {
 		staticPath = defaultStaticPath()
-		if !files.PathExists(logPath) {
+		if !files.PathExists(staticPath) {
 			os.MkdirAll(staticPath, os.ModePerm)
 		}
 	}
