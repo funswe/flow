@@ -144,6 +144,9 @@ func Run() error {
 		next()
 		cost := time.Now().UnixNano() - start
 		ctx.Logger.Debugf("request finish, cost: %d ms, statusCode: %d", cost/1000000, ctx.GetStatusCode())
+	}, func(ctx *Context, next Next) {
+		ctx.SetHeader("X-Powered-By", "Flow")
+		next()
 	}}, middleware...)
 	return http.ListenAndServe(address, router)
 }

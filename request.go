@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type request struct {
@@ -98,6 +100,51 @@ func (r *request) getLength() (l int) {
 	}
 	l, _ = strconv.Atoi(length)
 	return
+}
+
+func (r *request) isFresh(res *response) bool {
+	method := r.getMethod()
+	statusCode := res.getStatusCode()
+	if method != "GET" && method != "HEAD" {
+		return false
+	}
+	if (statusCode >= 200 && statusCode < 300) || statusCode == 304 {
+		modifiedSince := r.getHeader("If-Modified-Since")
+		noneMatch := r.getHeader("If-None-Match")
+		if len(modifiedSince) == 0 && len(noneMatch) == 0 {
+			return false
+		}
+		cacheControl := r.getHeader("Cache-Control")
+		matched, _ := regexp.Match("(?:^|,)\\s*?no-cache\\s*?(?:,|$)", []byte(cacheControl))
+		if len(cacheControl) > 0 && matched {
+			return false
+		}
+		if len(noneMatch) > 0 && noneMatch != "*" {
+			etag := res.getHeader("Etag")
+			if len(etag) == 0 {
+				return false
+			}
+		}
+		if len(modifiedSince) > 0 {
+			lastModified := res.getHeader("Last-Modified")
+			if len(lastModified) == 0 {
+				return false
+			}
+			lastModifiedTime, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", lastModified)
+			if err != nil {
+				return false
+			}
+			modifiedSinceTime, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", modifiedSince)
+			if err != nil {
+				return false
+			}
+			if lastModifiedTime.After(modifiedSinceTime) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func (r *request) getUserAgent() string {

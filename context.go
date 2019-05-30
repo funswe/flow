@@ -20,7 +20,7 @@ type Context struct {
 
 func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64) *Context {
 	req := newRequest(r, reqId)
-	res := newResponse(w, r)
+	res := newResponse(w, req)
 	r.ParseForm()
 	mapParams := make(map[string]interface{})
 	if len(params) > 0 {
