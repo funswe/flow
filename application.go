@@ -2,8 +2,10 @@ package flow
 
 import (
 	"github.com/funswe/flow/log"
+	"github.com/funswe/flow/utils/files"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
@@ -122,6 +124,9 @@ func Run() error {
 	}
 	if len(staticPath) == 0 {
 		staticPath = defaultStaticPath()
+		if !files.PathExists(logPath) {
+			os.MkdirAll(staticPath, os.ModePerm)
+		}
 	}
 	logFactory = log.New(logPath, appName+".log", loggerLevel)
 	logger := logFactory.Create(map[string]interface{}{

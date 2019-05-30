@@ -2,6 +2,7 @@ package log
 
 import (
 	"bytes"
+	"github.com/funswe/flow/utils/files"
 	"github.com/funswe/flow/utils/json"
 	"github.com/lestrrat-go/file-rotatelogs"
 	"github.com/rifflock/lfshook"
@@ -20,7 +21,7 @@ type MyFormatter struct {
 }
 
 func New(logPath, logFileName, loggerLevel string) *Logger {
-	if !pathExists(logPath) {
+	if !files.PathExists(logPath) {
 		os.MkdirAll(logPath, os.ModePerm)
 	}
 	baseLogPath := path.Join(logPath, logFileName)
@@ -76,12 +77,4 @@ func (f *MyFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 	b.WriteByte('\n')
 	return b.Bytes(), nil
-}
-
-func pathExists(path string) bool {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true
-	}
-	return false
 }
