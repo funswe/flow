@@ -31,6 +31,7 @@ var (
 	viewPath       string
 	logPath        string
 	loggerLevel    string
+	staticPath     string
 	middleware     []Middleware
 	router         = httprouter.New()
 	panicHandler   PanicHandler
@@ -91,6 +92,11 @@ func defaultLogPath() string {
 	return filepath.Join(path, "logs")
 }
 
+func defaultStaticPath() string {
+	path, _ := filepath.Abs(".")
+	return filepath.Join(path, "resource")
+}
+
 func defaultLoggerLevel() string {
 	return "debug"
 }
@@ -114,13 +120,17 @@ func Run() error {
 	if len(loggerLevel) == 0 {
 		loggerLevel = defaultLoggerLevel()
 	}
+	if len(staticPath) == 0 {
+		staticPath = defaultStaticPath()
+	}
 	logFactory = log.New(logPath, appName+".log", loggerLevel)
 	logger := logFactory.Create(map[string]interface{}{
-		"appName":  appName,
-		"proxy":    proxy,
-		"address":  address,
-		"viewPath": viewPath,
-		"logPath":  logPath,
+		"appName":    appName,
+		"proxy":      proxy,
+		"address":    address,
+		"viewPath":   viewPath,
+		"logPath":    logPath,
+		"staticPath": staticPath,
 	})
 	logger.Info("start params")
 	// 启动一个独立的携程处理请求ID的递增
@@ -250,6 +260,7 @@ func DELETE(path string, handler Handler) {
 }
 
 func StaticFiles(prefix, path string) {
+	staticPath = path
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
 	}

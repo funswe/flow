@@ -66,6 +66,9 @@ func (r *response) redirect(url string, code int) {
 }
 
 func (r *response) download(filePath string) {
+	if !filepath.IsAbs(filePath) {
+		filePath = filepath.Join(staticPath, filePath)
+	}
 	if _, err := os.Stat(filePath); err != nil {
 		http.ServeFile(r.res, r.req.req, filePath)
 		return
