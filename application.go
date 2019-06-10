@@ -1,15 +1,16 @@
 package flow
 
 import (
-	"github.com/funswe/flow/log"
-	"github.com/funswe/flow/utils/files"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"github.com/funswe/flow/log"
+	"github.com/funswe/flow/utils/files"
+	"github.com/julienschmidt/httprouter"
 )
 
 const (
@@ -20,6 +21,24 @@ const (
 	HTTP_METHOD_PUT     = "PUT"
 	HTTP_METHOD_PATCH   = "PATCH"
 	HTTP_METHOD_DELETE  = "DELETE"
+)
+
+const (
+	HTTP_HEADER_CONTENT_TYPE              = "Content-Type"
+	HTTP_HEADER_CONTENT_LENGTH            = "Content-Length"
+	HTTP_HEADER_TRANSFER_ENCODING         = "Transfer-Encoding"
+	HTTP_HEADER_CONTENT_DISPOSITION       = "Content-Disposition"
+	HTTP_HEADER_CONTENT_TRANSFER_ENCODING = "Content-Transfer-Encoding"
+	HTTP_HEADER_EXPIRES                   = "Expires"
+	HTTP_HEADER_CACHE_CONTROL             = "Cache-Control"
+	HTTP_HEADER_ETAG                      = "Etag"
+	HTTP_HEADER_X_FORWARDED_HOST          = "X-Forwarded-Host"
+	HTTP_HEADER_X_FORWARDED_PROTO         = "X-Forwarded-Proto"
+	HTTP_HEADER_IF_MODIFIED_SINCE         = "If-Modified-Since"
+	HTTP_HEADER_IF_NONE_MATCH             = "If-None-Match"
+	HTTP_HEADER_LAST_MODIFIED             = "Last-Modified"
+	HTTP_HEADER_X_CONTENT_TYPE_OPTIONS    = "X-Content-Type-Options"
+	HTTP_HEADER_X_POWERED_BY              = "X-Powered-By"
 )
 
 var (
@@ -57,7 +76,7 @@ type Handler func(ctx *Context)
 func defaultErrorHandle() PanicHandler {
 	return func(w http.ResponseWriter, r *http.Request, err interface{}) {
 		logFactory.Error(err, "\n", string(debug.Stack()))
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set(HTTP_HEADER_CONTENT_TYPE, "text/plain; charset=utf-8")
 		w.WriteHeader(500)
 		w.Write([]byte("unknown server error"))
 	}
@@ -65,8 +84,8 @@ func defaultErrorHandle() PanicHandler {
 
 func defaultNotFoundHandle() NotFoundHandle {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set(HTTP_HEADER_CONTENT_TYPE, "text/plain; charset=utf-8")
+		w.Header().Set(HTTP_HEADER_X_CONTENT_TYPE_OPTIONS, "nosniff")
 		w.WriteHeader(404)
 		w.Write([]byte("404 page not found"))
 	}
@@ -160,7 +179,7 @@ func Run() error {
 		cost := time.Now().UnixNano() - start
 		ctx.Logger.Debugf("request finish, cost: %d ms, statusCode: %d", cost/1000000, ctx.GetStatusCode())
 	}, func(ctx *Context, next Next) {
-		ctx.SetHeader("X-Powered-By", "Flow")
+		ctx.SetHeader(HTTP_HEADER_X_POWERED_BY, appName)
 		next()
 	}}, middleware...)
 	return http.ListenAndServe(address, router)

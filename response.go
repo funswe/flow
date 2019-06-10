@@ -3,12 +3,13 @@ package flow
 import (
 	"crypto/sha1"
 	"fmt"
-	"github.com/flosch/pongo2"
-	"github.com/funswe/flow/utils/json"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/flosch/pongo2"
+	"github.com/funswe/flow/utils/json"
 )
 
 type rwresponse struct {
@@ -49,7 +50,7 @@ func (r *response) setStatus(code int) *response {
 }
 
 func (r *response) setLength(length int) *response {
-	r.setHeader("Content-Length", strconv.Itoa(length))
+	r.setHeader(HTTP_HEADER_CONTENT_LENGTH, strconv.Itoa(length))
 	return r
 }
 
@@ -74,22 +75,22 @@ func (r *response) download(filePath string) {
 		return
 	}
 	_, fileName := filepath.Split(filePath)
-	r.setHeader("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
-	r.setHeader("Content-Type", "application/octet-stream")
-	r.setHeader("Content-Transfer-Encoding", "binary")
-	r.setHeader("Expires", "0")
-	r.setHeader("Cache-Control", "must-revalidate")
+	r.setHeader(HTTP_HEADER_CONTENT_DISPOSITION, fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+	r.setHeader(HTTP_HEADER_CONTENT_TYPE, "application/octet-stream")
+	r.setHeader(HTTP_HEADER_CONTENT_TRANSFER_ENCODING, "binary")
+	r.setHeader(HTTP_HEADER_EXPIRES, "0")
+	r.setHeader(HTTP_HEADER_CACHE_CONTROL, "must-revalidate")
 	http.ServeFile(r.res, r.req.req, filePath)
 }
 
 func (r *response) json(data map[string]interface{}) {
 	body, _ := json.Marshal(data)
-	r.setHeader("Content-Type", "application/json; charset=utf-8")
+	r.setHeader(HTTP_HEADER_CONTENT_TYPE, "application/json; charset=utf-8")
 	r.raw(body)
 }
 
 func (r *response) text(data string) {
-	r.setHeader("Content-Type", "text/plain; charset=utf-8")
+	r.setHeader(HTTP_HEADER_CONTENT_TYPE, "text/plain; charset=utf-8")
 	r.raw([]byte(data))
 }
 
@@ -108,17 +109,17 @@ func (r *response) render(tmpFile string, data map[string]interface{}) {
 
 func (r *response) raw(data []byte) {
 	etag := fmt.Sprintf("%x", sha1.Sum(data))
-	r.setHeader("Etag", etag)
+	r.setHeader(HTTP_HEADER_ETAG, etag)
 	if r.req.isFresh(r) {
 		r.setStatus(304)
 	}
 	if r.getStatusCode() == 204 || r.getStatusCode() == 304 {
-		r.res.Header().Del("Content-Type")
-		r.res.Header().Del("Content-Length")
-		r.res.Header().Del("Transfer-Encoding")
+		r.res.Header().Del(HTTP_HEADER_CONTENT_TYPE)
+		r.res.Header().Del(HTTP_HEADER_CONTENT_LENGTH)
+		r.res.Header().Del(HTTP_HEADER_TRANSFER_ENCODING)
 		data = []byte{}
 	}
-	if r.req.getMethod() != "HEAD" {
+	if r.req.getMethod() != HTTP_METHOD_HEAD {
 		r.res.Write(data)
 	}
 }

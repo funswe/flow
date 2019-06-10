@@ -1,14 +1,15 @@
 package flow
 
 import (
-	"github.com/funswe/flow/log"
-	"github.com/funswe/flow/utils/json"
-	"github.com/julienschmidt/httprouter"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/funswe/flow/log"
+	"github.com/funswe/flow/utils/json"
+	"github.com/julienschmidt/httprouter"
 )
 
 type Context struct {

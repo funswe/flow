@@ -2,14 +2,15 @@ package log
 
 import (
 	"bytes"
-	"github.com/funswe/flow/utils/files"
-	"github.com/funswe/flow/utils/json"
-	"github.com/lestrrat-go/file-rotatelogs"
-	"github.com/rifflock/lfshook"
-	"github.com/sirupsen/logrus"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/funswe/flow/utils/files"
+	"github.com/funswe/flow/utils/json"
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	"github.com/rifflock/lfshook"
+	"github.com/sirupsen/logrus"
 )
 
 type Logger struct {

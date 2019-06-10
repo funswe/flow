@@ -34,7 +34,7 @@ func (r *request) getUri() string {
 func (r *request) getHost() string {
 	var host string
 	if proxy {
-		host = r.getHeader("X-Forwarded-Host")
+		host = r.getHeader(HTTP_HEADER_X_FORWARDED_HOST)
 	}
 	if len(host) == 0 {
 		if r.req.ProtoMajor >= 2 {
@@ -54,7 +54,7 @@ func (r *request) getProtocol() string {
 	if !proxy {
 		return "http"
 	}
-	return r.getHeader("X-Forwarded-Proto")
+	return r.getHeader(HTTP_HEADER_X_FORWARDED_PROTO)
 }
 
 func (r *request) isSecure() bool {
@@ -93,7 +93,7 @@ func (r *request) getHostname() string {
 }
 
 func (r *request) getLength() (l int) {
-	length := r.getHeader("Content-Length")
+	length := r.getHeader(HTTP_HEADER_CONTENT_LENGTH)
 	if len(length) == 0 {
 		l = 0
 		return
@@ -105,28 +105,28 @@ func (r *request) getLength() (l int) {
 func (r *request) isFresh(res *response) bool {
 	method := r.getMethod()
 	statusCode := res.getStatusCode()
-	if method != "GET" && method != "HEAD" {
+	if method != HTTP_METHOD_GET && method != HTTP_METHOD_HEAD {
 		return false
 	}
 	if (statusCode >= 200 && statusCode < 300) || statusCode == 304 {
-		modifiedSince := r.getHeader("If-Modified-Since")
-		noneMatch := r.getHeader("If-None-Match")
+		modifiedSince := r.getHeader(HTTP_HEADER_IF_MODIFIED_SINCE)
+		noneMatch := r.getHeader(HTTP_HEADER_IF_NONE_MATCH)
 		if len(modifiedSince) == 0 && len(noneMatch) == 0 {
 			return false
 		}
-		cacheControl := r.getHeader("Cache-Control")
+		cacheControl := r.getHeader(HTTP_HEADER_CACHE_CONTROL)
 		matched, _ := regexp.Match("(?:^|,)\\s*?no-cache\\s*?(?:,|$)", []byte(cacheControl))
 		if len(cacheControl) > 0 && matched {
 			return false
 		}
 		if len(noneMatch) > 0 && noneMatch != "*" {
-			etag := res.getHeader("Etag")
+			etag := res.getHeader(HTTP_HEADER_ETAG)
 			if len(etag) == 0 {
 				return false
 			}
 		}
 		if len(modifiedSince) > 0 {
-			lastModified := res.getHeader("Last-Modified")
+			lastModified := res.getHeader(HTTP_HEADER_LAST_MODIFIED)
 			if len(lastModified) == 0 {
 				return false
 			}
