@@ -19,4 +19,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.3.0 // indirect
 	github.com/tebeka/strftime v0.0.0-20140926081919-3f9c7761e312 // indirect
+	gorm.io/driver/mysql v1.0.2
+	gorm.io/gorm v1.20.2
 )

@@ -13,10 +13,11 @@ import (
 type request struct {
 	req *http.Request
 	id  int64
+	app *Application
 }
 
-func newRequest(r *http.Request, id int64) *request {
-	return &request{r, id}
+func newRequest(r *http.Request, id int64, app *Application) *request {
+	return &request{r, id, app}
 }
 
 func (r *request) getHeaders() map[string][]string {
@@ -33,8 +34,8 @@ func (r *request) getUri() string {
 
 func (r *request) getHost() string {
 	var host string
-	if proxy {
-		host = r.getHeader(HTTP_HEADER_X_FORWARDED_HOST)
+	if app.proxy {
+		host = r.getHeader(HttpHeaderXForwardedHost)
 	}
 	if len(host) == 0 {
 		if r.req.ProtoMajor >= 2 {
@@ -51,10 +52,10 @@ func (r *request) getProtocol() string {
 	if r.req.TLS != nil {
 		return "https"
 	}
-	if !proxy {
+	if !app.proxy {
 		return "http"
 	}
-	return r.getHeader(HTTP_HEADER_X_FORWARDED_PROTO)
+	return r.getHeader(HttpHeaderXForwardedProto)
 }
 
 func (r *request) isSecure() bool {
@@ -93,7 +94,7 @@ func (r *request) getHostname() string {
 }
 
 func (r *request) getLength() (l int) {
-	length := r.getHeader(HTTP_HEADER_CONTENT_LENGTH)
+	length := r.getHeader(HttpHeaderContentLength)
 	if len(length) == 0 {
 		l = 0
 		return
@@ -105,28 +106,28 @@ func (r *request) getLength() (l int) {
 func (r *request) isFresh(res *response) bool {
 	method := r.getMethod()
 	statusCode := res.getStatusCode()
-	if method != HTTP_METHOD_GET && method != HTTP_METHOD_HEAD {
+	if method != HttpMethodGet && method != HttpMethodHead {
 		return false
 	}
 	if (statusCode >= 200 && statusCode < 300) || statusCode == 304 {
-		modifiedSince := r.getHeader(HTTP_HEADER_IF_MODIFIED_SINCE)
-		noneMatch := r.getHeader(HTTP_HEADER_IF_NONE_MATCH)
+		modifiedSince := r.getHeader(HttpHeaderIfModifiedSince)
+		noneMatch := r.getHeader(HttpHeaderIfNoneMatch)
 		if len(modifiedSince) == 0 && len(noneMatch) == 0 {
 			return false
 		}
-		cacheControl := r.getHeader(HTTP_HEADER_CACHE_CONTROL)
+		cacheControl := r.getHeader(HttpHeaderCacheControl)
 		matched, _ := regexp.Match("(?:^|,)\\s*?no-cache\\s*?(?:,|$)", []byte(cacheControl))
 		if len(cacheControl) > 0 && matched {
 			return false
 		}
 		if len(noneMatch) > 0 && noneMatch != "*" {
-			etag := res.getHeader(HTTP_HEADER_ETAG)
+			etag := res.getHeader(HttpHeaderEtag)
 			if len(etag) == 0 {
 				return false
 			}
 		}
 		if len(modifiedSince) > 0 {
-			lastModified := res.getHeader(HTTP_HEADER_LAST_MODIFIED)
+			lastModified := res.getHeader(HttpHeaderLastModified)
 			if len(lastModified) == 0 {
 				return false
 			}

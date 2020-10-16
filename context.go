@@ -17,11 +17,12 @@ type Context struct {
 	res    *response
 	Logger *log.Logger
 	params map[string]interface{}
+	app    *Application
 }
 
-func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64) *Context {
-	req := newRequest(r, reqId)
-	res := newResponse(w, req)
+func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64, app *Application) *Context {
+	req := newRequest(r, reqId, app)
+	res := newResponse(w, req, app)
 	r.ParseForm()
 	mapParams := make(map[string]interface{})
 	if len(params) > 0 {
@@ -49,7 +50,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})
-	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger}
+	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app}
 }
 
 func (c *Context) GetParam(key string) (value string) {

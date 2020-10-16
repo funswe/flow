@@ -25,10 +25,11 @@ func (w *rwresponse) WriteHeader(statusCode int) {
 type response struct {
 	res http.ResponseWriter
 	req *request
+	app *Application
 }
 
-func newResponse(res http.ResponseWriter, req *request) *response {
-	return &response{res: res, req: req}
+func newResponse(res http.ResponseWriter, req *request, app *Application) *response {
+	return &response{res: res, req: req, app: app}
 }
 
 func (r *response) getHeaders() map[string][]string {
@@ -50,7 +51,7 @@ func (r *response) setStatus(code int) *response {
 }
 
 func (r *response) setLength(length int) *response {
-	r.setHeader(HTTP_HEADER_CONTENT_LENGTH, strconv.Itoa(length))
+	r.setHeader(HttpHeaderContentLength, strconv.Itoa(length))
 	return r
 }
 
@@ -68,34 +69,34 @@ func (r *response) redirect(url string, code int) {
 
 func (r *response) download(filePath string) {
 	if !filepath.IsAbs(filePath) {
-		filePath = filepath.Join(staticPath, filePath)
+		filePath = filepath.Join(app.staticPath, filePath)
 	}
 	if _, err := os.Stat(filePath); err != nil {
 		http.ServeFile(r.res, r.req.req, filePath)
 		return
 	}
 	_, fileName := filepath.Split(filePath)
-	r.setHeader(HTTP_HEADER_CONTENT_DISPOSITION, fmt.Sprintf("attachment; filename=\"%s\"", fileName))
-	r.setHeader(HTTP_HEADER_CONTENT_TYPE, "application/octet-stream")
-	r.setHeader(HTTP_HEADER_CONTENT_TRANSFER_ENCODING, "binary")
-	r.setHeader(HTTP_HEADER_EXPIRES, "0")
-	r.setHeader(HTTP_HEADER_CACHE_CONTROL, "must-revalidate")
+	r.setHeader(HttpHeaderContentDisposition, fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+	r.setHeader(HttpHeaderContentType, "application/octet-stream")
+	r.setHeader(HttpHeaderContentTransferEncoding, "binary")
+	r.setHeader(HttpHeaderExpires, "0")
+	r.setHeader(HttpHeaderCacheControl, "must-revalidate")
 	http.ServeFile(r.res, r.req.req, filePath)
 }
 
 func (r *response) json(data map[string]interface{}) {
 	body, _ := json.Marshal(data)
-	r.setHeader(HTTP_HEADER_CONTENT_TYPE, "application/json; charset=utf-8")
+	r.setHeader(HttpHeaderContentType, "application/json; charset=utf-8")
 	r.raw(body)
 }
 
 func (r *response) text(data string) {
-	r.setHeader(HTTP_HEADER_CONTENT_TYPE, "text/plain; charset=utf-8")
+	r.setHeader(HttpHeaderContentType, "text/plain; charset=utf-8")
 	r.raw([]byte(data))
 }
 
 func (r *response) render(tmpFile string, data map[string]interface{}) {
-	tpl, err := pongo2.FromCache(filepath.Join(viewPath, tmpFile))
+	tpl, err := pongo2.FromCache(filepath.Join(app.viewPath, tmpFile))
 	if err != nil {
 		panic(err)
 	}
@@ -109,17 +110,17 @@ func (r *response) render(tmpFile string, data map[string]interface{}) {
 
 func (r *response) raw(data []byte) {
 	etag := fmt.Sprintf("%x", sha1.Sum(data))
-	r.setHeader(HTTP_HEADER_ETAG, etag)
+	r.setHeader(HttpHeaderEtag, etag)
 	if r.req.isFresh(r) {
 		r.setStatus(304)
 	}
 	if r.getStatusCode() == 204 || r.getStatusCode() == 304 {
-		r.res.Header().Del(HTTP_HEADER_CONTENT_TYPE)
-		r.res.Header().Del(HTTP_HEADER_CONTENT_LENGTH)
-		r.res.Header().Del(HTTP_HEADER_TRANSFER_ENCODING)
+		r.res.Header().Del(HttpHeaderContentType)
+		r.res.Header().Del(HttpHeaderContentLength)
+		r.res.Header().Del(HttpHeaderTransferEncoding)
 		data = []byte{}
 	}
-	if r.req.getMethod() != HTTP_METHOD_HEAD {
+	if r.req.getMethod() != HttpMethodHead {
 		r.res.Write(data)
 	}
 }
