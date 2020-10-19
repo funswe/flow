@@ -1,6 +1,6 @@
 module github.com/funswe/flow
 
-go 1.12
+go 1.15
 
 require (
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect

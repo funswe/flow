@@ -34,7 +34,7 @@ func (r *request) getUri() string {
 
 func (r *request) getHost() string {
 	var host string
-	if app.proxy {
+	if app.serverConfig.Proxy {
 		host = r.getHeader(HttpHeaderXForwardedHost)
 	}
 	if len(host) == 0 {
@@ -52,7 +52,7 @@ func (r *request) getProtocol() string {
 	if r.req.TLS != nil {
 		return "https"
 	}
-	if !app.proxy {
+	if !app.serverConfig.Proxy {
 		return "http"
 	}
 	return r.getHeader(HttpHeaderXForwardedProto)

@@ -18,6 +18,7 @@ type Context struct {
 	Logger *log.Logger
 	params map[string]interface{}
 	app    *Application
+	Orm    *Orm
 }
 
 func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64, app *Application) *Context {
@@ -50,7 +51,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})
-	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app}
+	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.orm}
 }
 
 func (c *Context) GetParam(key string) (value string) {
@@ -181,4 +182,8 @@ func (c *Context) Body(body string) {
 
 func (c *Context) Render(tmpFile string, data map[string]interface{}) {
 	c.res.render(tmpFile, data)
+}
+
+func (c *Context) GetApp() *Application {
+	return c.app
 }

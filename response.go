@@ -1,7 +1,6 @@
 package flow
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"net/http"
 	"os"
@@ -69,7 +68,7 @@ func (r *response) redirect(url string, code int) {
 
 func (r *response) download(filePath string) {
 	if !filepath.IsAbs(filePath) {
-		filePath = filepath.Join(app.staticPath, filePath)
+		filePath = filepath.Join(app.serverConfig.StaticPath, filePath)
 	}
 	if _, err := os.Stat(filePath); err != nil {
 		http.ServeFile(r.res, r.req.req, filePath)
@@ -96,7 +95,7 @@ func (r *response) text(data string) {
 }
 
 func (r *response) render(tmpFile string, data map[string]interface{}) {
-	tpl, err := pongo2.FromCache(filepath.Join(app.viewPath, tmpFile))
+	tpl, err := pongo2.FromCache(filepath.Join(app.serverConfig.ViewPath, tmpFile))
 	if err != nil {
 		panic(err)
 	}
@@ -109,8 +108,8 @@ func (r *response) render(tmpFile string, data map[string]interface{}) {
 }
 
 func (r *response) raw(data []byte) {
-	etag := fmt.Sprintf("%x", sha1.Sum(data))
-	r.setHeader(HttpHeaderEtag, etag)
+	//etag := fmt.Sprintf("%x", sha1.Sum(data))
+	//r.setHeader(HttpHeaderEtag, etag)
 	if r.req.isFresh(r) {
 		r.setStatus(304)
 	}

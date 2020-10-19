@@ -1,24 +1,88 @@
 package flow
 
-type Config struct {
-	userName string
-	password string
-	dbName   string
-	host     string
-	port     uint
-	pool     *Pool
+import "gorm.io/gorm"
+
+type OrmConfig struct {
+	Enable   bool
+	UserName string
+	Password string
+	DbName   string
+	Host     string
+	Port     int
+	Pool     *OrmPool
 }
 
-type Pool struct {
-	maxIdle         int
-	maxOpen         int
-	connMaxLifetime int
+type OrmPool struct {
+	MaxIdle         int
+	MaxOpen         int
+	ConnMaxLifeTime int64
+	ConnMaxIdleTime int64
 }
 
-func NewConfig(userName, password, dbName, host string, port uint, pool *Pool) *Config {
-	return &Config{userName, password, dbName, host, port, pool}
+func defOrmConfig() *OrmConfig {
+	return &OrmConfig{
+		Enable:   false,
+		UserName: "root",
+		Password: "root",
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Pool:     defOrmPool(),
+	}
 }
 
-func NewPool(maxIdle, maxOpen, connMaxLifetime int) *Pool {
-	return &Pool{maxIdle, maxOpen, connMaxLifetime}
+func defOrmPool() *OrmPool {
+	return &OrmPool{
+		MaxIdle:         5,
+		MaxOpen:         10,
+		ConnMaxLifeTime: 30000,
+		ConnMaxIdleTime: 10000,
+	}
+}
+
+type Orm struct {
+	db     *gorm.DB
+	models map[string]*Model
+}
+
+func (o *Orm) Register(name string, model *Model) *Orm {
+	o.models[name] = model
+	return o
+}
+
+func (o *Orm) Use(name string) *Model {
+	return o.models[name]
+}
+
+func (o *Orm) Create(value interface{}) error {
+	if err := o.db.Create(value).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *Orm) Find(value interface{}) error {
+	if err := o.db.Find(value).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func defOrm() *Orm {
+	return &Orm{
+		models: make(map[string]*Model),
+	}
+}
+
+type Model struct {
+	ID          uint
+	UpdatedTime uint
+	CreatedTime uint
+}
+
+func (m *Model) AddItem() (*Model, error) {
+	result := app.orm.db.Create(m)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return m, nil
 }
