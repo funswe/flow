@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -84,13 +83,7 @@ func (app *Application) initDB() {
 	if app.ormConfig != nil && app.ormConfig.Enable {
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password, app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)
 		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-			Logger: logger.New(
-				logFactory,
-				logger.Config{
-					SlowThreshold: time.Second, // 慢 SQL 阈值
-					LogLevel:      logger.Info, // Log level
-					Colorful:      false,       // 禁用彩色打印
-				}),
+			Logger: defOrmLogger(),
 		})
 		if err != nil {
 			panic(err)
@@ -139,11 +132,11 @@ func (app *Application) run() error {
 		}
 	}()
 	app.middleware = append([]Middleware{func(ctx *Context, next Next) {
-		start := time.Now().UnixNano()
+		start := time.Now()
 		ctx.Logger.Debugf("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
 		next()
-		cost := time.Now().UnixNano() - start
-		ctx.Logger.Debugf("request completed, cost: %d ms, statusCode: %d", cost/1000000, ctx.GetStatusCode())
+		cost := time.Since(start)
+		ctx.Logger.Debugf("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.GetStatusCode())
 	}, func(ctx *Context, next Next) {
 		ctx.SetHeader(HttpHeaderXPoweredBy, app.serverConfig.AppName)
 		next()

@@ -1,6 +1,14 @@
 package flow
 
-import "gorm.io/gorm"
+import (
+	"context"
+	"errors"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"time"
+
+	"github.com/funswe/flow/log"
+)
 
 type OrmConfig struct {
 	Enable   bool
@@ -17,6 +25,50 @@ type OrmPool struct {
 	MaxOpen         int
 	ConnMaxLifeTime int64
 	ConnMaxIdleTime int64
+}
+
+type dbLogger struct {
+	LogLevel logger.LogLevel
+	logger   *log.Logger
+}
+
+func (l *dbLogger) LogMode(level logger.LogLevel) logger.Interface {
+	newLogger := *l
+	newLogger.LogLevel = level
+	return &newLogger
+}
+
+func (l *dbLogger) Info(ctx context.Context, msg string, data ...interface{}) {
+	if l.LogLevel >= logger.Info {
+		l.logger.Debugf(msg, data...)
+	}
+}
+
+func (l *dbLogger) Warn(ctx context.Context, msg string, data ...interface{}) {
+	if l.LogLevel >= logger.Warn {
+		l.logger.Debugf(msg, data...)
+	}
+}
+
+func (l *dbLogger) Error(ctx context.Context, msg string, data ...interface{}) {
+	if l.LogLevel >= logger.Error {
+		l.logger.Debugf(msg, data...)
+	}
+}
+
+func (l *dbLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
+	if l.LogLevel > 0 {
+		elapsed := time.Since(begin)
+		sql, rows := fc()
+		l.logger.Debugf("[%fms] [affected:%d] %s", float64(elapsed.Nanoseconds())/1e6, rows, sql)
+	}
+}
+
+func defOrmLogger() *dbLogger {
+	return &dbLogger{
+		LogLevel: logger.Info,
+		logger:   log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+"_sql.log", "debug"),
+	}
 }
 
 func defOrmConfig() *OrmConfig {
@@ -40,20 +92,13 @@ func defOrmPool() *OrmPool {
 }
 
 type Orm struct {
-	db     *gorm.DB
-	models map[string]*Model
-}
-
-func (o *Orm) Register(name string, model *Model) *Orm {
-	o.models[name] = model
-	return o
-}
-
-func (o *Orm) Use(name string) *Model {
-	return o.models[name]
+	db *gorm.DB
 }
 
 func (o *Orm) Create(value interface{}) error {
+	if o.db == nil {
+		panic(errors.New("no db server available"))
+	}
 	if err := o.db.Create(value).Error; err != nil {
 		return err
 	}
@@ -68,9 +113,7 @@ func (o *Orm) Find(value interface{}) error {
 }
 
 func defOrm() *Orm {
-	return &Orm{
-		models: make(map[string]*Model),
-	}
+	return &Orm{}
 }
 
 type Model struct {
