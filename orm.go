@@ -2,12 +2,13 @@ package flow
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"time"
 
 	"github.com/funswe/flow/log"
+	"gorm.io/driver/mysql"
 )
 
 type OrmConfig struct {
@@ -91,41 +92,27 @@ func defOrmPool() *OrmPool {
 	}
 }
 
-type Orm struct {
-	db *gorm.DB
-}
-
-func (o *Orm) Create(value interface{}) error {
-	if o.db == nil {
-		panic(errors.New("no db server available"))
+func initDB(app *Application) {
+	if app.ormConfig != nil && app.ormConfig.Enable {
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password, app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)
+		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+			Logger: defOrmLogger(),
+		})
+		if err != nil {
+			panic(err)
+		}
+		sqlDB, err := db.DB()
+		if err != nil {
+			panic(err)
+		}
+		sqlDB.SetConnMaxIdleTime(time.Duration(app.ormConfig.Pool.ConnMaxIdleTime) * time.Second)
+		sqlDB.SetConnMaxLifetime(time.Duration(app.ormConfig.Pool.ConnMaxLifeTime) * time.Second)
+		sqlDB.SetMaxIdleConns(app.ormConfig.Pool.MaxIdle)
+		sqlDB.SetMaxOpenConns(app.ormConfig.Pool.MaxOpen)
+		err = sqlDB.Ping()
+		if err != nil {
+			panic(err)
+		}
+		app.db = db
 	}
-	if err := o.db.Create(value).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-func (o *Orm) Find(value interface{}) error {
-	if err := o.db.Find(value).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-func defOrm() *Orm {
-	return &Orm{}
-}
-
-type Model struct {
-	ID          uint
-	UpdatedTime uint
-	CreatedTime uint
-}
-
-func (m *Model) AddItem() (*Model, error) {
-	result := app.orm.db.Create(m)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return m, nil
 }

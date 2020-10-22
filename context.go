@@ -1,6 +1,8 @@
 package flow
 
 import (
+	"errors"
+	"gorm.io/gorm"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -18,7 +20,6 @@ type Context struct {
 	Logger *log.Logger
 	params map[string]interface{}
 	app    *Application
-	Orm    *Orm
 }
 
 func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64, app *Application) *Context {
@@ -51,7 +52,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})
-	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.orm}
+	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app}
 }
 
 func (c *Context) GetParam(key string) (value string) {
@@ -186,4 +187,11 @@ func (c *Context) Render(tmpFile string, data map[string]interface{}) {
 
 func (c *Context) GetApp() *Application {
 	return c.app
+}
+
+func (c *Context) DB() *gorm.DB {
+	if c.app.db == nil {
+		panic(errors.New("no db server available"))
+	}
+	return c.app.db
 }

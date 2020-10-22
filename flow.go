@@ -39,7 +39,6 @@ var (
 		serverConfig: defServerConfig(),
 		loggerConfig: defLoggerConfig(),
 		ormConfig:    defOrmConfig(),
-		orm:          defOrm(),
 	}
 )
 

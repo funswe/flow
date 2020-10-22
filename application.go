@@ -2,7 +2,6 @@ package flow
 
 import (
 	"fmt"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"net/http"
 	"os"
@@ -72,36 +71,11 @@ type Application struct {
 	reqId        int64
 	rc           chan int64
 	logger       *log.Logger
-	orm          *Orm
 	serverConfig *ServerConfig
 	loggerConfig *LoggerConfig
 	ormConfig    *OrmConfig
 	middleware   []Middleware
-}
-
-func (app *Application) initDB() {
-	if app.ormConfig != nil && app.ormConfig.Enable {
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password, app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)
-		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-			Logger: defOrmLogger(),
-		})
-		if err != nil {
-			panic(err)
-		}
-		sqlDB, err := db.DB()
-		if err != nil {
-			panic(err)
-		}
-		sqlDB.SetConnMaxIdleTime(time.Duration(app.ormConfig.Pool.ConnMaxIdleTime) * time.Second)
-		sqlDB.SetConnMaxLifetime(time.Duration(app.ormConfig.Pool.ConnMaxLifeTime) * time.Second)
-		sqlDB.SetMaxIdleConns(app.ormConfig.Pool.MaxIdle)
-		sqlDB.SetMaxOpenConns(app.ormConfig.Pool.MaxOpen)
-		err = sqlDB.Ping()
-		if err != nil {
-			panic(err)
-		}
-		app.orm.db = db
-	}
+	db           *gorm.DB
 }
 
 func (app *Application) run() error {
@@ -123,7 +97,7 @@ func (app *Application) run() error {
 		}
 	}
 	// 初始化数据库
-	app.initDB()
+	initDB(app)
 	// 启动一个独立的携程处理请求ID的递增
 	go func() {
 		for {
