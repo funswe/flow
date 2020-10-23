@@ -2,8 +2,10 @@ package flow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"time"
 
@@ -26,6 +28,274 @@ type OrmPool struct {
 	MaxOpen         int
 	ConnMaxLifeTime int64
 	ConnMaxIdleTime int64
+}
+
+type OrmOp struct {
+	Eq   string
+	Gt   string
+	Gte  string
+	Lt   string
+	Lte  string
+	IN   string
+	Like string
+	Or   string
+}
+
+type OrmColumn struct {
+	Table  string
+	Column string
+	Alias  string
+}
+
+type OrmFromTable struct {
+	Table string
+	Alias string
+	Joins []*OrmJoin
+}
+
+type OrmJoin struct {
+	Type  string
+	Table string
+	Alias string
+	ON    []*OrmWhere
+}
+
+type OrmWhere struct {
+	Column *OrmColumn
+	Opt    string
+	value  interface{}
+}
+
+type OrmOrderBy struct {
+	Column *OrmColumn
+	Desc   bool
+}
+
+type OrmLimit struct {
+	Limit  int
+	Offset int
+}
+
+type OrmGroupBy struct {
+	Columns []*OrmColumn
+	Having  []*OrmWhere
+}
+
+type Orm struct {
+	db *gorm.DB
+	Op *OrmOp
+}
+
+func (orm *Orm) DB() *gorm.DB {
+	if orm.db == nil {
+		panic(errors.New("no db server available"))
+	}
+	return orm.db
+}
+
+func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromTable, conditions map[string]interface{}, orderBy []*OrmOrderBy, limit *OrmLimit, groupBy *OrmGroupBy) error {
+	if orm.db == nil {
+		panic(errors.New("no db server available"))
+	}
+	stmt := gorm.Statement{DB: orm.db, Clauses: map[string]clause.Clause{}}
+	buildName := make([]string, 0)
+	if len(fields) > 0 {
+		stmt.AddClause(orm.buildFields(fields))
+		buildName = append(buildName, "SELECT")
+	}
+	if fromTable != nil {
+		stmt.AddClause(orm.buildFromTable(fromTable))
+		buildName = append(buildName, "FROM")
+	}
+	if len(orderBy) > 0 {
+		stmt.AddClause(orm.buildOrderBy(orderBy))
+		buildName = append(buildName, "ORDER BY")
+	}
+	if groupBy != nil {
+		stmt.AddClause(orm.buildGroupBy(groupBy))
+		buildName = append(buildName, "GROUP BY")
+	}
+	if limit != nil {
+		stmt.AddClause(orm.buildLimit(limit))
+		buildName = append(buildName, "LIMIT")
+	}
+	stmt.Build(buildName...)
+	sql := stmt.SQL.String()
+	result := orm.db.Raw(sql, conditions).Scan(dest)
+	return result.Error
+}
+
+func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions map[string]interface{}) error {
+	if orm.db == nil {
+		panic(errors.New("no db server available"))
+	}
+	stmt := gorm.Statement{DB: orm.db, Clauses: map[string]clause.Clause{}}
+	buildName := make([]string, 0)
+	stmt.AddClause(clause.Select{
+		Expression: clause.Expr{SQL: "count(1)"},
+	})
+	buildName = append(buildName, "SELECT")
+	if fromTable != nil {
+		stmt.AddClause(orm.buildFromTable(fromTable))
+		buildName = append(buildName, "FROM")
+	}
+	stmt.Build(buildName...)
+	sql := stmt.SQL.String()
+	result := orm.db.Raw(sql, conditions).Scan(count)
+	return result.Error
+}
+
+func (orm *Orm) buildFields(fields []*OrmColumn) clause.Select {
+	columns := make([]clause.Column, 0)
+	for _, field := range fields {
+		if len(field.Table) > 0 {
+			columns = append(columns, clause.Column{
+				Table: field.Table,
+				Name:  field.Column,
+				Alias: field.Alias,
+			})
+		} else {
+			sql := field.Column
+			if len(field.Alias) > 0 {
+				sql = fmt.Sprintf("%s as %s", field.Column, field.Alias)
+			}
+			return clause.Select{
+				Expression: clause.Expr{SQL: sql},
+			}
+		}
+	}
+	return clause.Select{
+		Columns: columns,
+	}
+}
+
+func (orm *Orm) buildFromTable(fromTable *OrmFromTable) clause.From {
+	from := clause.From{
+		Tables: []clause.Table{
+			{
+				Name: fromTable.Table, Alias: fromTable.Alias,
+			},
+		},
+	}
+	if len(fromTable.Joins) > 0 {
+		joins := make([]clause.Join, 0)
+		for _, join := range fromTable.Joins {
+			j := clause.Join{
+				Type: clause.JoinType(join.Type),
+				Table: clause.Table{
+					Name:  join.Table,
+					Alias: join.Alias,
+				},
+			}
+			if len(join.ON) > 0 {
+				j.ON = clause.Where{
+					Exprs: orm.parseWhere(join.ON),
+				}
+			}
+			joins = append(joins, j)
+		}
+		from.Joins = joins
+	}
+	return from
+}
+
+func (orm *Orm) buildOrderBy(orderBy []*OrmOrderBy) clause.OrderBy {
+	columns := make([]clause.OrderByColumn, 0)
+	for _, order := range orderBy {
+		columns = append(columns, clause.OrderByColumn{
+			Column: clause.Column{
+				Table: order.Column.Table,
+				Name:  order.Column.Column,
+				Alias: order.Column.Alias,
+			},
+			Desc: order.Desc,
+		})
+	}
+	return clause.OrderBy{
+		Columns: columns,
+	}
+}
+
+func (orm *Orm) buildGroupBy(groupBy *OrmGroupBy) clause.GroupBy {
+	result := clause.GroupBy{}
+	columns := groupBy.Columns
+	if len(columns) > 0 {
+		resultColumns := make([]clause.Column, 0)
+		for _, column := range columns {
+			resultColumns = append(resultColumns, clause.Column{
+				Table: column.Table,
+				Name:  column.Column,
+				Alias: column.Alias,
+			})
+		}
+		result.Columns = resultColumns
+	}
+	having := groupBy.Having
+	if len(having) > 0 {
+		result.Having = orm.parseWhere(groupBy.Having)
+	}
+	return result
+}
+
+func (orm *Orm) buildLimit(limit *OrmLimit) clause.Limit {
+	return clause.Limit{
+		Limit:  limit.Limit,
+		Offset: limit.Offset,
+	}
+}
+
+func (orm *Orm) parseWhere(wheres []*OrmWhere) []clause.Expression {
+	onExprs := make([]clause.Expression, 0)
+	for _, o := range wheres {
+		var value interface{}
+		var values []interface{}
+		var valueWheres []*OrmWhere
+		switch t := o.value.(type) {
+		case *OrmColumn:
+			value = clause.Column{Table: t.Table, Name: t.Column, Alias: t.Alias}
+		case []interface{}:
+			values = t
+		case []*OrmWhere:
+			valueWheres = t
+		default:
+			value = t
+		}
+		switch o.Opt {
+		case orm.Op.Eq:
+			onExprs = append(onExprs, clause.Eq{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: value,
+			})
+		case orm.Op.Gt:
+			onExprs = append(onExprs, clause.Gt{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: value,
+			})
+		case orm.Op.Gte:
+			onExprs = append(onExprs, clause.Gte{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: value,
+			})
+		case orm.Op.Lt:
+			onExprs = append(onExprs, clause.Lt{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: value,
+			})
+		case orm.Op.Lte:
+			onExprs = append(onExprs, clause.Lte{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: value,
+			})
+		case orm.Op.IN:
+			onExprs = append(onExprs, clause.IN{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Values: values,
+			})
+		case orm.Op.Like:
+			onExprs = append(onExprs, clause.Like{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: value,
+			})
+		case orm.Op.Or:
+			onExprs = append(onExprs, clause.OrConditions{
+				Exprs: orm.parseWhere(valueWheres),
+			})
+		}
+	}
+	return onExprs
 }
 
 type dbLogger struct {
@@ -69,6 +339,19 @@ func defOrmLogger() *dbLogger {
 	return &dbLogger{
 		LogLevel: logger.Info,
 		logger:   log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+"_sql.log", "debug"),
+	}
+}
+
+func newOp() *OrmOp {
+	return &OrmOp{
+		Eq:   "eq",
+		Gt:   "gt",
+		Gte:  "gte",
+		Lt:   "lt",
+		Lte:  "lte",
+		IN:   "in",
+		Like: "like",
+		Or:   "or",
 	}
 }
 
