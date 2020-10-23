@@ -258,7 +258,7 @@ func (orm *Orm) parseWhere(wheres []*OrmWhere) []clause.Expression {
 		var value interface{}
 		var values []interface{}
 		var valueWheres []*OrmWhere
-		switch t := o.value.(type) {
+		switch t := o.Value.(type) {
 		case *OrmColumn:
 			value = clause.Column{Table: t.Table, Name: t.Column, Alias: t.Alias}
 		case []interface{}:
