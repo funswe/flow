@@ -41,6 +41,13 @@ type OrmOp struct {
 	Or   string
 }
 
+type OrmJoinType struct {
+	CrossJoin string
+	InnerJoin string
+	LeftJoin  string
+	RightJoin string
+}
+
 type OrmColumn struct {
 	Table  string
 	Column string
@@ -63,7 +70,7 @@ type OrmJoin struct {
 type OrmWhere struct {
 	Column *OrmColumn
 	Opt    string
-	value  interface{}
+	Value  interface{}
 }
 
 type OrmOrderBy struct {
@@ -82,8 +89,9 @@ type OrmGroupBy struct {
 }
 
 type Orm struct {
-	db *gorm.DB
-	Op *OrmOp
+	db       *gorm.DB
+	Op       *OrmOp
+	JoinType *OrmJoinType
 }
 
 func (orm *Orm) DB() *gorm.DB {
@@ -352,6 +360,15 @@ func newOp() *OrmOp {
 		IN:   "in",
 		Like: "like",
 		Or:   "or",
+	}
+}
+
+func newJoinType() *OrmJoinType {
+	return &OrmJoinType{
+		CrossJoin: "CROSS",
+		InnerJoin: "INNER",
+		LeftJoin:  "LEFT",
+		RightJoin: "RIGHT",
 	}
 }
 

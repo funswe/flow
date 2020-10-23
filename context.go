@@ -51,7 +51,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})
-	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: &Orm{db: app.db, Op: newOp()}}
+	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: &Orm{db: app.db, Op: newOp(), JoinType: newJoinType()}}
 }
 
 func (c *Context) GetParam(key string) (value string) {
