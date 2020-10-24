@@ -115,6 +115,13 @@ func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromT
 		stmt.AddClause(orm.buildFromTable(fromTable))
 		buildName = append(buildName, "FROM")
 	}
+	var params map[string]interface{}
+	var where clause.Where
+	if len(conditions) > 0 {
+		where, params = orm.buildConditions(conditions)
+		stmt.AddClause(where)
+		buildName = append(buildName, "WHERE")
+	}
 	if len(orderBy) > 0 {
 		stmt.AddClause(orm.buildOrderBy(orderBy))
 		buildName = append(buildName, "ORDER BY")
@@ -129,7 +136,7 @@ func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromT
 	}
 	stmt.Build(buildName...)
 	sql := stmt.SQL.String()
-	result := orm.db.Raw(sql, conditions).Scan(dest)
+	result := orm.db.Raw(sql, params).Scan(dest)
 	return result.Error
 }
 
@@ -156,7 +163,6 @@ func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions []*OrmWh
 	}
 	stmt.Build(buildName...)
 	sql := stmt.SQL.String()
-	fmt.Println(sql)
 	result := orm.db.Raw(sql, params).Scan(count)
 	return result.Error
 }
