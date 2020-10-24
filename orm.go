@@ -101,7 +101,7 @@ func (orm *Orm) DB() *gorm.DB {
 	return orm.db
 }
 
-func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromTable, conditions map[string]interface{}, orderBy []*OrmOrderBy, limit *OrmLimit, groupBy *OrmGroupBy) error {
+func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromTable, conditions []*OrmWhere, orderBy []*OrmOrderBy, limit *OrmLimit, groupBy *OrmGroupBy) error {
 	if orm.db == nil {
 		panic(errors.New("no db server available"))
 	}
@@ -133,7 +133,7 @@ func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromT
 	return result.Error
 }
 
-func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions map[string]interface{}) error {
+func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions []*OrmWhere) error {
 	if orm.db == nil {
 		panic(errors.New("no db server available"))
 	}
@@ -147,9 +147,17 @@ func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions map[stri
 		stmt.AddClause(orm.buildFromTable(fromTable))
 		buildName = append(buildName, "FROM")
 	}
+	var params map[string]interface{}
+	var where clause.Where
+	if len(conditions) > 0 {
+		where, params = orm.buildConditions(conditions)
+		stmt.AddClause(where)
+		buildName = append(buildName, "WHERE")
+	}
 	stmt.Build(buildName...)
 	sql := stmt.SQL.String()
-	result := orm.db.Raw(sql, conditions).Scan(count)
+	fmt.Println(sql)
+	result := orm.db.Raw(sql, params).Scan(count)
 	return result.Error
 }
 
@@ -205,6 +213,14 @@ func (orm *Orm) buildFromTable(fromTable *OrmFromTable) clause.From {
 		from.Joins = joins
 	}
 	return from
+}
+
+func (orm *Orm) buildConditions(conditions []*OrmWhere) (clause.Where, map[string]interface{}) {
+	params := make(map[string]interface{}, 0)
+	where := clause.Where{
+		Exprs: orm.parseConditionsWhere(conditions, params),
+	}
+	return where, params
 }
 
 func (orm *Orm) buildOrderBy(orderBy []*OrmOrderBy) clause.OrderBy {
@@ -300,6 +316,77 @@ func (orm *Orm) parseWhere(wheres []*OrmWhere) []clause.Expression {
 		case orm.Op.Or:
 			onExprs = append(onExprs, clause.OrConditions{
 				Exprs: orm.parseWhere(valueWheres),
+			})
+		}
+	}
+	return onExprs
+}
+
+func (orm *Orm) parseConditionsWhere(wheres []*OrmWhere, params map[string]interface{}) []clause.Expression {
+	onExprs := make([]clause.Expression, 0)
+	for _, o := range wheres {
+		var value interface{}
+		var valueWheres []*OrmWhere
+		switch t := o.Value.(type) {
+		case []*OrmWhere:
+			valueWheres = t
+		default:
+			value = t
+		}
+		paramsKey := fmt.Sprintf("%s:%s", o.Column.Table, o.Column.Column)
+		switch o.Opt {
+		case orm.Op.Eq:
+			params[paramsKey] = value
+			onExprs = append(onExprs, clause.Eq{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: clause.Expr{
+					SQL: fmt.Sprintf("@%s", paramsKey),
+				},
+			})
+		case orm.Op.Gt:
+			params[paramsKey] = value
+			onExprs = append(onExprs, clause.Gt{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: clause.Expr{
+					SQL: fmt.Sprintf("@%s", paramsKey),
+				},
+			})
+		case orm.Op.Gte:
+			params[paramsKey] = value
+			onExprs = append(onExprs, clause.Gte{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: clause.Expr{
+					SQL: fmt.Sprintf("@%s", paramsKey),
+				},
+			})
+		case orm.Op.Lt:
+			params[paramsKey] = value
+			onExprs = append(onExprs, clause.Lt{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: clause.Expr{
+					SQL: fmt.Sprintf("@%s", paramsKey),
+				},
+			})
+		case orm.Op.Lte:
+			params[paramsKey] = value
+			onExprs = append(onExprs, clause.Lte{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: clause.Expr{
+					SQL: fmt.Sprintf("@%s", paramsKey),
+				},
+			})
+		case orm.Op.IN:
+			params[paramsKey] = value
+			onExprs = append(onExprs, clause.IN{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Values: []interface{}{clause.Expr{
+					SQL: fmt.Sprintf("@%s", paramsKey),
+				}},
+			})
+		case orm.Op.Like:
+			params[paramsKey] = value
+			onExprs = append(onExprs, clause.Like{
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Value: clause.Expr{
+					SQL: fmt.Sprintf("@%s", paramsKey),
+				},
+			})
+		case orm.Op.Or:
+			onExprs = append(onExprs, clause.OrConditions{
+				Exprs: orm.parseConditionsWhere(valueWheres, params),
 			})
 		}
 	}
