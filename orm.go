@@ -326,10 +326,13 @@ func (orm *Orm) parseConditionsWhere(wheres []*OrmWhere, params map[string]inter
 	onExprs := make([]clause.Expression, 0)
 	for _, o := range wheres {
 		var value interface{}
+		var values []interface{}
 		var valueWheres []*OrmWhere
 		switch t := o.Value.(type) {
 		case []*OrmWhere:
 			valueWheres = t
+		case []interface{}:
+			values = t
 		default:
 			value = t
 		}
@@ -371,11 +374,16 @@ func (orm *Orm) parseConditionsWhere(wheres []*OrmWhere, params map[string]inter
 				},
 			})
 		case orm.Op.IN:
-			params[paramsKey] = value
+			vv := make([]interface{}, 0)
+			for i, v := range values {
+				pKey := fmt.Sprintf("%s:%s:%d", o.Column.Table, o.Column.Column, i)
+				params[pKey] = v
+				vv = append(vv, clause.Expr{
+					SQL: fmt.Sprintf("@%s", pKey),
+				})
+			}
 			onExprs = append(onExprs, clause.IN{
-				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Values: []interface{}{clause.Expr{
-					SQL: fmt.Sprintf("@%s", paramsKey),
-				}},
+				Column: clause.Column{Table: o.Column.Table, Name: o.Column.Column, Alias: o.Column.Alias}, Values: vv,
 			})
 		case orm.Op.Like:
 			params[paramsKey] = value
