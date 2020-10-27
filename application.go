@@ -2,7 +2,6 @@ package flow
 
 import (
 	"fmt"
-	"gorm.io/gorm"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -75,7 +74,7 @@ type Application struct {
 	loggerConfig *LoggerConfig
 	ormConfig    *OrmConfig
 	middleware   []Middleware
-	db           *gorm.DB
+	orm          *Orm
 }
 
 func (app *Application) run() error {

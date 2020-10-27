@@ -451,6 +451,10 @@ func defOrmLogger() *dbLogger {
 	}
 }
 
+func defOrm() *Orm {
+	return &Orm{Op: newOp(), JoinType: newJoinType()}
+}
+
 func newOp() *OrmOp {
 	return &OrmOp{
 		Eq:   "eq",
@@ -514,6 +518,6 @@ func initDB(app *Application) {
 		if err != nil {
 			panic(err)
 		}
-		app.db = db
+		app.orm.db = db
 	}
 }
