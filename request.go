@@ -10,28 +10,34 @@ import (
 	"time"
 )
 
+// 定义封装的request结构
 type request struct {
-	req *http.Request
-	id  int64
-	app *Application
+	req *http.Request // 原生的request对象
+	id  int64         // 请求ID
+	app *Application  // app对象
 }
 
+// 返回封装的request对象
 func newRequest(r *http.Request, id int64, app *Application) *request {
 	return &request{r, id, app}
 }
 
+// 获取所有的请求头信息
 func (r *request) getHeaders() map[string][]string {
 	return r.req.Header
 }
 
+// 获取请求头信息
 func (r *request) getHeader(key string) string {
 	return r.req.Header.Get(key)
 }
 
+// 获取请求的URI
 func (r *request) getUri() string {
 	return r.req.URL.Path
 }
 
+// 获取服务的HOST信息
 func (r *request) getHost() string {
 	var host string
 	if app.serverConfig.Proxy {
@@ -48,6 +54,7 @@ func (r *request) getHost() string {
 	return host
 }
 
+// 获取请求的协议，http或者https
 func (r *request) getProtocol() string {
 	if r.req.TLS != nil {
 		return "https"
@@ -58,30 +65,37 @@ func (r *request) getProtocol() string {
 	return r.getHeader(HttpHeaderXForwardedProto)
 }
 
+// 判断请求是不是https
 func (r *request) isSecure() bool {
 	return r.getProtocol() == "https"
 }
 
+// 获取请求的地址，如http://www.demo.com
 func (r *request) getOrigin() string {
 	return fmt.Sprintf("%s://%s", r.getProtocol(), r.getHost())
 }
 
+// 获取请求完整链接，如http://www.demo.com/a/b
 func (r *request) getHref() string {
 	return fmt.Sprintf("%s%s", r.getOrigin(), r.req.RequestURI)
 }
 
+// 获取请求的方法，如GET，POST
 func (r *request) getMethod() string {
 	return r.req.Method
 }
 
+// 获取请求的query参数，map结构
 func (r *request) getQuery() url.Values {
 	return r.req.URL.Query()
 }
 
+// 获取请求的querystring
 func (r *request) getQuerystring() string {
 	return r.req.URL.RawQuery
 }
 
+// 获取请求的hostname信息
 func (r *request) getHostname() string {
 	host := r.getHost()
 	if len(host) == 0 {
@@ -93,6 +107,7 @@ func (r *request) getHostname() string {
 	return strings.Split(host, ":")[0]
 }
 
+// 获取请求的内容长度
 func (r *request) getLength() (l int) {
 	length := r.getHeader(HttpHeaderContentLength)
 	if len(length) == 0 {
@@ -148,6 +163,7 @@ func (r *request) isFresh(res *response) bool {
 	return false
 }
 
+// 获取请求的UA
 func (r *request) getUserAgent() string {
 	return r.req.UserAgent()
 }

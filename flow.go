@@ -4,6 +4,7 @@ import (
 	"github.com/funswe/flow/log"
 )
 
+// 定义请求的方法
 const (
 	HttpMethodGet     = "GET"
 	HttpMethodHead    = "HEAD"
@@ -14,6 +15,7 @@ const (
 	HttpMethodDelete  = "DELETE"
 )
 
+// 定义http头
 const (
 	HttpHeaderContentType             = "Content-Type"
 	HttpHeaderContentLength           = "Content-Length"
@@ -51,10 +53,12 @@ var (
 	}
 )
 
+// 添加中间件
 func Use(m Middleware) {
 	app.use(m)
 }
 
+// 设置服务配置
 func SetServerConfig(serverConfig *ServerConfig) {
 	if serverConfig == nil {
 		serverConfig = defServerConfig()
@@ -62,6 +66,7 @@ func SetServerConfig(serverConfig *ServerConfig) {
 	app.setServerConfig(serverConfig)
 }
 
+// 设置日志配置
 func SetLoggerConfig(loggerConfig *LoggerConfig) {
 	if loggerConfig == nil {
 		loggerConfig = defLoggerConfig()
@@ -69,6 +74,7 @@ func SetLoggerConfig(loggerConfig *LoggerConfig) {
 	app.setLoggerConfig(loggerConfig)
 }
 
+// 设置数据库配置
 func SetOrmConfig(ormConfig *OrmConfig) {
 	if ormConfig == nil {
 		ormConfig = defOrmConfig()
@@ -79,6 +85,7 @@ func SetOrmConfig(ormConfig *OrmConfig) {
 	app.setOrmConfig(ormConfig)
 }
 
+// 设置redis配置
 func SetRedisConfig(redisConfig *RedisConfig) {
 	if redisConfig == nil {
 		redisConfig = defRedisConfig()
@@ -86,6 +93,7 @@ func SetRedisConfig(redisConfig *RedisConfig) {
 	app.setRedisConfig(redisConfig)
 }
 
+// 设置跨域配置
 func SetCorsConfig(corsConfig *CorsConfig) {
 	if corsConfig == nil {
 		corsConfig = defCorsConfig()
@@ -99,6 +107,7 @@ func SetCorsConfig(corsConfig *CorsConfig) {
 	app.setCorsConfig(corsConfig)
 }
 
+// 设置httpclient配置
 func SetCurlConfig(curlConfig *CurlConfig) {
 	if curlConfig == nil {
 		curlConfig = defCurlConfig()
@@ -106,6 +115,7 @@ func SetCurlConfig(curlConfig *CurlConfig) {
 	app.setCurlConfig(curlConfig)
 }
 
+// 启动服务
 func Run() error {
 	return app.run()
 }

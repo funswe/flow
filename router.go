@@ -7,9 +7,9 @@ import (
 )
 
 var (
-	router         = httprouter.New()
-	panicHandler   = defaultErrorHandle()
-	notFoundHandle = defaultNotFoundHandle()
+	router         = httprouter.New()        // 路由对象
+	panicHandler   = defaultErrorHandle()    // 统一错误处理方法
+	notFoundHandle = defaultNotFoundHandle() // 路由不存在处理方法
 )
 
 func init() {
@@ -27,8 +27,10 @@ func (f NotFoundHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f(w, r)
 }
 
+// 定义中间件接口
 type Middleware func(ctx *Context, next Next)
 
+// 定义路由处理器
 type Handler func(ctx *Context)
 
 func dispatch(ctx *Context, index int, handler Handler) Next {

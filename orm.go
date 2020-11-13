@@ -13,6 +13,7 @@ import (
 	"gorm.io/driver/mysql"
 )
 
+// 定义数据库配置
 type OrmConfig struct {
 	Enable   bool
 	UserName string
@@ -23,6 +24,7 @@ type OrmConfig struct {
 	Pool     *OrmPool
 }
 
+// 定义数据库连接池配置
 type OrmPool struct {
 	MaxIdle         int
 	MaxOpen         int
@@ -30,6 +32,7 @@ type OrmPool struct {
 	ConnMaxIdleTime int64
 }
 
+// 定义数据库查询条件操作符
 type OrmOp struct {
 	Eq   string
 	Gt   string
@@ -41,6 +44,7 @@ type OrmOp struct {
 	Or   string
 }
 
+// 定义数据库JOIN表类型
 type OrmJoinType struct {
 	CrossJoin string
 	InnerJoin string
@@ -48,53 +52,62 @@ type OrmJoinType struct {
 	RightJoin string
 }
 
+// 定义数据库表列结构
 type OrmColumn struct {
-	Table  string
-	Column string
-	Alias  string
+	Table  string // 表名
+	Column string // 列名
+	Alias  string // 别名
 }
 
+// 定义数据库查询表结构
 type OrmFromTable struct {
-	Table string
-	Alias string
-	Joins []*OrmJoin
+	Table string     // 表名
+	Alias string     // 别名
+	Joins []*OrmJoin // JOIN表集合
 }
 
+// 定义数据库JOIN表结构
 type OrmJoin struct {
-	Type  string
-	Table string
-	Alias string
-	ON    []*OrmWhere
+	Type  string      // JOIN类型
+	Table string      // 表名
+	Alias string      // 别名
+	ON    []*OrmWhere // JOIN条件
 }
 
+// 定义数据库条件结构
 type OrmWhere struct {
-	Column *OrmColumn
-	Opt    string
-	Value  interface{}
+	Column *OrmColumn  // 表列
+	Opt    string      // 操作符
+	Value  interface{} //条件的值
 }
 
+// 定义数据库ORDER BY结构
 type OrmOrderBy struct {
-	Column *OrmColumn
-	Desc   bool
+	Column *OrmColumn // 表列
+	Desc   bool       // 是否是倒序
 }
 
+// 定义数据库LIMIT结构
 type OrmLimit struct {
 	Limit  int
 	Offset int
 }
 
+// 定义数据库GROUP BY结构
 type OrmGroupBy struct {
-	Columns []*OrmColumn
-	Having  []*OrmWhere
+	Columns []*OrmColumn // 列集合
+	Having  []*OrmWhere  // having条件集合
 }
 
+// 定义数据库操作对象
 type Orm struct {
-	app      *Application
-	db       *gorm.DB
-	Op       *OrmOp
-	JoinType *OrmJoinType
+	app      *Application // app对象
+	db       *gorm.DB     // grom db对象
+	Op       *OrmOp       // 数据库查询条件操作符对象
+	JoinType *OrmJoinType // 数据库JOIN表类型对象
 }
 
+// 返回grom db对象，用于原生查询使用
 func (orm *Orm) DB() *gorm.DB {
 	if orm.db == nil {
 		panic(errors.New("no db server available"))
@@ -102,6 +115,7 @@ func (orm *Orm) DB() *gorm.DB {
 	return orm.db
 }
 
+// 数据库查询方法
 func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromTable, conditions []*OrmWhere, orderBy []*OrmOrderBy, limit *OrmLimit, groupBy *OrmGroupBy) error {
 	if orm.db == nil {
 		panic(errors.New("no db server available"))
@@ -141,6 +155,7 @@ func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromT
 	return result.Error
 }
 
+// 返回查询的总条数
 func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions []*OrmWhere) error {
 	if orm.db == nil {
 		panic(errors.New("no db server available"))
@@ -168,6 +183,7 @@ func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions []*OrmWh
 	return result.Error
 }
 
+// 构建查询的列信息
 func (orm *Orm) buildFields(fields []*OrmColumn) clause.Select {
 	columns := make([]clause.Column, 0)
 	for _, field := range fields {
@@ -192,6 +208,7 @@ func (orm *Orm) buildFields(fields []*OrmColumn) clause.Select {
 	}
 }
 
+// 构建查询的from表
 func (orm *Orm) buildFromTable(fromTable *OrmFromTable) clause.From {
 	from := clause.From{
 		Tables: []clause.Table{
@@ -222,6 +239,7 @@ func (orm *Orm) buildFromTable(fromTable *OrmFromTable) clause.From {
 	return from
 }
 
+// 构建查询的条件
 func (orm *Orm) buildConditions(conditions []*OrmWhere) (clause.Where, map[string]interface{}) {
 	params := make(map[string]interface{}, 0)
 	where := clause.Where{
@@ -230,6 +248,7 @@ func (orm *Orm) buildConditions(conditions []*OrmWhere) (clause.Where, map[strin
 	return where, params
 }
 
+// 构建查询的ORDER BY
 func (orm *Orm) buildOrderBy(orderBy []*OrmOrderBy) clause.OrderBy {
 	columns := make([]clause.OrderByColumn, 0)
 	for _, order := range orderBy {
@@ -247,6 +266,7 @@ func (orm *Orm) buildOrderBy(orderBy []*OrmOrderBy) clause.OrderBy {
 	}
 }
 
+// 构建查询的GROUP BY
 func (orm *Orm) buildGroupBy(groupBy *OrmGroupBy) clause.GroupBy {
 	result := clause.GroupBy{}
 	columns := groupBy.Columns
@@ -268,6 +288,7 @@ func (orm *Orm) buildGroupBy(groupBy *OrmGroupBy) clause.GroupBy {
 	return result
 }
 
+// 构建查询的LIMIT信息
 func (orm *Orm) buildLimit(limit *OrmLimit) clause.Limit {
 	return clause.Limit{
 		Limit:  limit.Limit,
@@ -275,6 +296,7 @@ func (orm *Orm) buildLimit(limit *OrmLimit) clause.Limit {
 	}
 }
 
+// 解析条件对象信息
 func (orm *Orm) parseWhere(wheres []*OrmWhere) []clause.Expression {
 	onExprs := make([]clause.Expression, 0)
 	for _, o := range wheres {
@@ -329,6 +351,7 @@ func (orm *Orm) parseWhere(wheres []*OrmWhere) []clause.Expression {
 	return onExprs
 }
 
+// 解析条件对象信息，包含条件的值
 func (orm *Orm) parseConditionsWhere(wheres []*OrmWhere, params map[string]interface{}) []clause.Expression {
 	onExprs := make([]clause.Expression, 0)
 	for _, o := range wheres {
@@ -408,6 +431,7 @@ func (orm *Orm) parseConditionsWhere(wheres []*OrmWhere, params map[string]inter
 	return onExprs
 }
 
+// 定义数据库logger对象
 type dbLogger struct {
 	LogLevel logger.LogLevel
 	logger   *log.Logger
@@ -445,6 +469,7 @@ func (l *dbLogger) Trace(ctx context.Context, begin time.Time, fc func() (string
 	}
 }
 
+// 返回默认的数据库操logger对象
 func defOrmLogger() *dbLogger {
 	return &dbLogger{
 		LogLevel: logger.Info,
@@ -452,10 +477,12 @@ func defOrmLogger() *dbLogger {
 	}
 }
 
+// 返回默认的数据库操作对象
 func defOrm() *Orm {
 	return &Orm{Op: newOp(), JoinType: newJoinType()}
 }
 
+// 返回数据库操作符对象
 func newOp() *OrmOp {
 	return &OrmOp{
 		Eq:   "eq",
@@ -469,6 +496,7 @@ func newOp() *OrmOp {
 	}
 }
 
+// 返回数据库JOIN类型对象
 func newJoinType() *OrmJoinType {
 	return &OrmJoinType{
 		CrossJoin: "CROSS",
@@ -478,6 +506,7 @@ func newJoinType() *OrmJoinType {
 	}
 }
 
+// 返回默认的数据库配置
 func defOrmConfig() *OrmConfig {
 	return &OrmConfig{
 		Enable:   false,
@@ -489,6 +518,7 @@ func defOrmConfig() *OrmConfig {
 	}
 }
 
+// 返回默认的数据库连接池配置
 func defOrmPool() *OrmPool {
 	return &OrmPool{
 		MaxIdle:         5,
@@ -498,6 +528,7 @@ func defOrmPool() *OrmPool {
 	}
 }
 
+// 初始化数据库
 func initDB(app *Application) {
 	if app.ormConfig != nil && app.ormConfig.Enable {
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password, app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)

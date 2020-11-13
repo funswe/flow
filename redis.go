@@ -12,6 +12,7 @@ import (
 
 var ctx = context.Background()
 
+// 定义redis配置结构
 type RedisConfig struct {
 	Enable   bool
 	Password string
@@ -20,6 +21,7 @@ type RedisConfig struct {
 	Port     int
 }
 
+// 返回默认的redis配置
 func defRedisConfig() *RedisConfig {
 	return &RedisConfig{
 		Enable: false,
@@ -31,22 +33,26 @@ func defRedisConfig() *RedisConfig {
 
 const Nil = NotExistError("flow-redis: key not exist")
 
+// 定义redis键不存在错误对象
 type NotExistError string
 
 func (e NotExistError) Error() string { return string(e) }
 
 func (NotExistError) NotExistError() {}
 
+// 定义redis操作对象
 type RedisClient struct {
 	app      *Application
 	NotExist NotExistError
 	rdb      *redis.Client
 }
 
+// 获取原始的字符串值
 func (rd *RedisClient) GetRaw(key string) (string, error) {
 	return rd.rdb.Get(ctx, key).Result()
 }
 
+// 将值赋值给指定的结构对象
 func (rd *RedisClient) Get(key string, v interface{}) error {
 	val, err := rd.rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -58,10 +64,12 @@ func (rd *RedisClient) Get(key string, v interface{}) error {
 	return json.Unmarshal([]byte(val), v)
 }
 
+// 设置原始的字符串值
 func (rd *RedisClient) SetRaw(key string, value string, expiration time.Duration) error {
 	return rd.rdb.Set(ctx, key, value, expiration).Err()
 }
 
+// 设置结构体或者map的值
 func (rd *RedisClient) Set(key string, value interface{}, expiration time.Duration) error {
 	switch reflect.TypeOf(value).Kind() {
 	case reflect.Ptr, reflect.Map:
@@ -75,12 +83,14 @@ func (rd *RedisClient) Set(key string, value interface{}, expiration time.Durati
 	}
 }
 
+// 返回默认的redis操作对象
 func defRedis() *RedisClient {
 	return &RedisClient{
 		NotExist: Nil,
 	}
 }
 
+// 初始化redis
 func initRedis(app *Application) {
 	if app.redisConfig != nil && app.redisConfig.Enable {
 		rdb := redis.NewClient(&redis.Options{

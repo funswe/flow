@@ -8,29 +8,33 @@ import (
 	"time"
 )
 
+// 定义httpclient配置
 type CurlConfig struct {
-	Enable  bool
-	Timeout time.Duration
-	Headers map[string]string
+	Timeout time.Duration     // 请求的超时时间，单位秒
+	Headers map[string]string // 统一请求的头信息
 }
 
+// 返回默认的httpclient配置
 func defCurlConfig() *CurlConfig {
 	return &CurlConfig{
-		Enable:  false,
-		Timeout: 10 * time.Second,
+		Timeout: 10 * time.Second, // 默认10秒超时时间
 	}
 }
 
+// 定义返回的结果
 type CurlResult string
 
+// 将返回的结果定义到给定的对象里
 func (cr CurlResult) Parse(v interface{}) error {
 	return json.Unmarshal([]byte(string(cr)), v)
 }
 
+// 返回原始的请求字符串结果数据
 func (cr CurlResult) Raw(v interface{}) string {
 	return string(cr)
 }
 
+// 定义httpclient对象
 type Curl struct {
 	app    *Application
 	client *resty.Client
@@ -53,7 +57,7 @@ func (c *Curl) Get(url string, data interface{}, headers map[string]string) (Cur
 	res, err := r.Get(url)
 	if err != nil {
 		logFactory.Errorf("curl request end, error: %s", err.Error())
-		return CurlResult(""), err
+		return "", err
 	}
 	logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
 	return CurlResult(res.String()), nil
@@ -77,12 +81,11 @@ func (c *Curl) Post(url string, data interface{}, headers map[string]string) (Cu
 	return CurlResult(res.String()), nil
 }
 
+// 初始化httpclient对象
 func initCurl(app *Application) {
-	if app.curlConfig != nil && app.curlConfig.Enable {
-		app.curl.client = resty.NewWithClient(&http.Client{
-			Timeout: app.curlConfig.Timeout,
-		})
-		app.curl.app = app
-		logFactory.Info("curl server init ok")
-	}
+	app.curl.client = resty.NewWithClient(&http.Client{
+		Timeout: app.curlConfig.Timeout,
+	})
+	app.curl.app = app
+	logFactory.Info("curl server init ok")
 }

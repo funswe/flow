@@ -55,6 +55,7 @@ func (l *Logger) Create(fields logrus.Fields) *Logger {
 	return &Logger{e}
 }
 
+// 定义日志格式
 func (f *MyFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var b *bytes.Buffer
 	if entry.Buffer != nil {
