@@ -73,8 +73,13 @@ type Application struct {
 	serverConfig *ServerConfig
 	loggerConfig *LoggerConfig
 	ormConfig    *OrmConfig
+	redisConfig  *RedisConfig
+	corsConfig   *CorsConfig
+	curlConfig   *CurlConfig
 	middleware   []Middleware
 	orm          *Orm
+	redis        *RedisClient
+	curl         *Curl
 }
 
 func (app *Application) run() error {
@@ -97,6 +102,10 @@ func (app *Application) run() error {
 	}
 	// 初始化数据库
 	initDB(app)
+	// 初始化REDIS
+	initRedis(app)
+	// 初始化curl
+	initCurl(app)
 	// 启动一个独立的携程处理请求ID的递增
 	go func() {
 		for {
@@ -112,6 +121,11 @@ func (app *Application) run() error {
 		ctx.Logger.Infof("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.GetStatusCode())
 	}, func(ctx *Context, next Next) {
 		ctx.SetHeader(HttpHeaderXPoweredBy, app.serverConfig.AppName)
+		if app.corsConfig.Enable {
+			ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
+			ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethod)
+			ctx.SetHeader(HttpHeaderCorsHeaders, app.corsConfig.AllowedHeaders)
+		}
 		next()
 	}}, app.middleware...)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port), router)
@@ -134,5 +148,20 @@ func (app *Application) setLoggerConfig(loggerConfig *LoggerConfig) *Application
 
 func (app *Application) setOrmConfig(ormConfig *OrmConfig) *Application {
 	app.ormConfig = ormConfig
+	return app
+}
+
+func (app *Application) setRedisConfig(redisConfig *RedisConfig) *Application {
+	app.redisConfig = redisConfig
+	return app
+}
+
+func (app *Application) setCorsConfig(corsConfig *CorsConfig) *Application {
+	app.corsConfig = corsConfig
+	return app
+}
+
+func (app *Application) setCurlConfig(curlConfig *CurlConfig) *Application {
+	app.curlConfig = curlConfig
 	return app
 }

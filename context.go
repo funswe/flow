@@ -19,6 +19,8 @@ type Context struct {
 	params map[string]interface{}
 	app    *Application
 	Orm    *Orm
+	Redis  *RedisClient
+	Curl   *Curl
 }
 
 func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64, app *Application) *Context {
@@ -51,7 +53,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})
-	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.orm}
+	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.orm, Redis: app.redis, Curl: app.curl}
 }
 
 func (c *Context) GetParam(key string) (value string) {

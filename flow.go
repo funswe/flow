@@ -30,6 +30,9 @@ const (
 	HttpHeaderLastModified            = "Last-Modified"
 	HttpHeaderXContentTypeOptions     = "X-Content-Type-Options"
 	HttpHeaderXPoweredBy              = "X-Powered-By"
+	HttpHeaderCorsOrigin              = "Access-Control-Allow-Origin"
+	HttpHeaderCorsMethods             = "Access-Control-Allow-Methods"
+	HttpHeaderCorsHeaders             = "Access-Control-Allow-Headers"
 )
 
 var (
@@ -39,7 +42,12 @@ var (
 		serverConfig: defServerConfig(),
 		loggerConfig: defLoggerConfig(),
 		ormConfig:    defOrmConfig(),
+		redisConfig:  defRedisConfig(),
+		corsConfig:   defCorsConfig(),
+		curlConfig:   defCurlConfig(),
 		orm:          defOrm(),
+		redis:        defRedis(),
+		curl:         defCurl(),
 	}
 )
 
@@ -69,6 +77,33 @@ func SetOrmConfig(ormConfig *OrmConfig) {
 		ormConfig.Pool = defOrmPool()
 	}
 	app.setOrmConfig(ormConfig)
+}
+
+func SetRedisConfig(redisConfig *RedisConfig) {
+	if redisConfig == nil {
+		redisConfig = defRedisConfig()
+	}
+	app.setRedisConfig(redisConfig)
+}
+
+func SetCorsConfig(corsConfig *CorsConfig) {
+	if corsConfig == nil {
+		corsConfig = defCorsConfig()
+	}
+	if len(corsConfig.AllowOrigin) == 0 {
+		corsConfig.AllowOrigin = defCorsConfig().AllowOrigin
+	}
+	if len(corsConfig.AllowedMethod) == 0 {
+		corsConfig.AllowedMethod = defCorsConfig().AllowedMethod
+	}
+	app.setCorsConfig(corsConfig)
+}
+
+func SetCurlConfig(curlConfig *CurlConfig) {
+	if curlConfig == nil {
+		curlConfig = defCurlConfig()
+	}
+	app.setCurlConfig(curlConfig)
 }
 
 func Run() error {

@@ -89,6 +89,7 @@ type OrmGroupBy struct {
 }
 
 type Orm struct {
+	app      *Application
 	db       *gorm.DB
 	Op       *OrmOp
 	JoinType *OrmJoinType
@@ -519,5 +520,6 @@ func initDB(app *Application) {
 			panic(err)
 		}
 		app.orm.db = db
+		logFactory.Info("db server init ok")
 	}
 }
