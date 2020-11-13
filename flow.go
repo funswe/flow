@@ -93,8 +93,8 @@ func SetCorsConfig(corsConfig *CorsConfig) {
 	if len(corsConfig.AllowOrigin) == 0 {
 		corsConfig.AllowOrigin = defCorsConfig().AllowOrigin
 	}
-	if len(corsConfig.AllowedMethod) == 0 {
-		corsConfig.AllowedMethod = defCorsConfig().AllowedMethod
+	if len(corsConfig.AllowedMethods) == 0 {
+		corsConfig.AllowedMethods = defCorsConfig().AllowedMethods
 	}
 	app.setCorsConfig(corsConfig)
 }

@@ -123,7 +123,7 @@ func (app *Application) run() error {
 		ctx.SetHeader(HttpHeaderXPoweredBy, app.serverConfig.AppName)
 		if app.corsConfig.Enable {
 			ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
-			ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethod)
+			ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethods)
 			ctx.SetHeader(HttpHeaderCorsHeaders, app.corsConfig.AllowedHeaders)
 		}
 		next()
