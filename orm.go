@@ -187,21 +187,26 @@ func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions []*OrmWh
 func (orm *Orm) buildFields(fields []*OrmColumn) clause.Select {
 	columns := make([]clause.Column, 0)
 	for _, field := range fields {
-		if len(field.Table) > 0 {
-			columns = append(columns, clause.Column{
-				Table: field.Table,
-				Name:  field.Column,
-				Alias: field.Alias,
-			})
-		} else {
-			sql := field.Column
-			if len(field.Alias) > 0 {
-				sql = fmt.Sprintf("%s as %s", field.Column, field.Alias)
-			}
-			return clause.Select{
-				Expression: clause.Expr{SQL: sql},
-			}
-		}
+		columns = append(columns, clause.Column{
+			Table: field.Table,
+			Name:  field.Column,
+			Alias: field.Alias,
+		})
+		//if len(field.Table) > 0 {
+		//	columns = append(columns, clause.Column{
+		//		Table: field.Table,
+		//		Name:  field.Column,
+		//		Alias: field.Alias,
+		//	})
+		//} else {
+		//	sql := field.Column
+		//	if len(field.Alias) > 0 {
+		//		sql = fmt.Sprintf("%s as %s", field.Column, field.Alias)
+		//	}
+		//	return clause.Select{
+		//		Expression: clause.Expr{SQL: sql},
+		//	}
+		//}
 	}
 	return clause.Select{
 		Columns: columns,
