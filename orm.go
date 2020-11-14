@@ -116,16 +116,16 @@ func (orm *Orm) DB() *gorm.DB {
 }
 
 // 数据库查询方法
-func (orm *Orm) Query(dest interface{}, fields []*OrmColumn, fromTable *OrmFromTable, conditions []*OrmWhere, orderBy []*OrmOrderBy, limit *OrmLimit, groupBy *OrmGroupBy) error {
+func (orm *Orm) Query(dest interface{}, fields interface{}, fromTable *OrmFromTable, conditions []*OrmWhere, orderBy []*OrmOrderBy, limit *OrmLimit, groupBy *OrmGroupBy) error {
 	if orm.db == nil {
 		panic(errors.New("no db server available"))
 	}
 	stmt := gorm.Statement{DB: orm.db, Clauses: map[string]clause.Clause{}}
 	buildName := make([]string, 0)
-	if len(fields) > 0 {
-		stmt.AddClause(orm.buildFields(fields))
-		buildName = append(buildName, "SELECT")
-	}
+	//if len(fields) > 0 {
+	stmt.AddClause(orm.buildFields(fields))
+	buildName = append(buildName, "SELECT")
+	//}
 	if fromTable != nil {
 		stmt.AddClause(orm.buildFromTable(fromTable))
 		buildName = append(buildName, "FROM")
@@ -184,29 +184,43 @@ func (orm *Orm) Count(count *int64, fromTable *OrmFromTable, conditions []*OrmWh
 }
 
 // 构建查询的列信息
-func (orm *Orm) buildFields(fields []*OrmColumn) clause.Select {
+func (orm *Orm) buildFields(fields interface{}) clause.Select {
+	if fields == nil {
+		return clause.Select{}
+	}
 	columns := make([]clause.Column, 0)
-	for _, field := range fields {
-		columns = append(columns, clause.Column{
-			Table: field.Table,
-			Name:  field.Column,
-			Alias: field.Alias,
-		})
-		//if len(field.Table) > 0 {
-		//	columns = append(columns, clause.Column{
-		//		Table: field.Table,
-		//		Name:  field.Column,
-		//		Alias: field.Alias,
-		//	})
-		//} else {
-		//	sql := field.Column
-		//	if len(field.Alias) > 0 {
-		//		sql = fmt.Sprintf("%s as %s", field.Column, field.Alias)
-		//	}
-		//	return clause.Select{
-		//		Expression: clause.Expr{SQL: sql},
-		//	}
-		//}
+	switch fs := fields.(type) {
+	case []*OrmColumn:
+		for _, field := range fs {
+			columns = append(columns, clause.Column{
+				Table: field.Table,
+				Name:  field.Column,
+				Alias: field.Alias,
+			})
+			//if len(field.Table) > 0 {
+			//	columns = append(columns, clause.Column{
+			//		Table: field.Table,
+			//		Name:  field.Column,
+			//		Alias: field.Alias,
+			//	})
+			//} else {
+			//	sql := field.Column
+			//	if len(field.Alias) > 0 {
+			//		sql = fmt.Sprintf("%s as %s", field.Column, field.Alias)
+			//	}
+			//	return clause.Select{
+			//		Expression: clause.Expr{SQL: sql},
+			//	}
+			//}
+		}
+	case []string:
+		for _, field := range fs {
+			columns = append(columns, clause.Column{
+				Name: field,
+			})
+		}
+	default:
+		panic(errors.New("invalid fields type"))
 	}
 	return clause.Select{
 		Columns: columns,
