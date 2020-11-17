@@ -54,30 +54,32 @@ func handle(handler Handler) func(http.ResponseWriter, *http.Request, httprouter
 
 func GET(path string, handler Handler) {
 	router.Handle(HttpMethodGet, path, handle(handler))
+	router.Handle(HttpMethodOptions, path, handle(handler))
 }
 
 func HEAD(path string, handler Handler) {
 	router.Handle(HttpMethodHead, path, handle(handler))
-}
-
-func OPTIONS(path string, handler Handler) {
 	router.Handle(HttpMethodOptions, path, handle(handler))
 }
 
 func POST(path string, handler Handler) {
 	router.Handle(HttpMethodPost, path, handle(handler))
+	router.Handle(HttpMethodOptions, path, handle(handler))
 }
 
 func PUT(path string, handler Handler) {
 	router.Handle(HttpMethodPut, path, handle(handler))
+	router.Handle(HttpMethodOptions, path, handle(handler))
 }
 
 func PATCH(path string, handler Handler) {
 	router.Handle(HttpMethodPatch, path, handle(handler))
+	router.Handle(HttpMethodOptions, path, handle(handler))
 }
 
 func DELETE(path string, handler Handler) {
 	router.Handle(HttpMethodDelete, path, handle(handler))
+	router.Handle(HttpMethodOptions, path, handle(handler))
 }
 
 //func StaticFiles(prefix, path string) {
@@ -93,13 +95,13 @@ func DELETE(path string, handler Handler) {
 //}
 
 func ALL(path string, handler Handler) {
-	GET(path, handler)
-	HEAD(path, handler)
-	OPTIONS(path, handler)
-	POST(path, handler)
-	PUT(path, handler)
-	PATCH(path, handler)
-	DELETE(path, handler)
+	router.Handle(HttpMethodGet, path, handle(handler))
+	router.Handle(HttpMethodHead, path, handle(handler))
+	router.Handle(HttpMethodPost, path, handle(handler))
+	router.Handle(HttpMethodPut, path, handle(handler))
+	router.Handle(HttpMethodPatch, path, handle(handler))
+	router.Handle(HttpMethodDelete, path, handle(handler))
+	router.Handle(HttpMethodOptions, path, handle(handler))
 }
 
 func defaultErrorHandle() PanicHandler {
