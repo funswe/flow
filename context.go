@@ -1,9 +1,12 @@
 package flow
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -92,6 +95,37 @@ func (c *Context) GetParamDefault(key, defaultValue string) (value string) {
 
 // 解析请求的参数，将参数赋值到给定的对象里
 func (c *Context) Parse(object interface{}) error {
+	if object == nil {
+		return errors.New("object can not be nil")
+	}
+	t := reflect.TypeOf(object)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	fieldNum := t.NumField()
+	for i := 0; i < fieldNum; i++ {
+		field := t.Field(i)
+		flowTag := field.Tag.Get("flow")
+		if len(flowTag) == 0 {
+			continue
+		}
+		ss := strings.Split(flowTag, ";")
+		for _, tag := range ss {
+			kv := strings.Split(tag, ":")
+			if kv[0] == "required" && kv[1] == "true" {
+				if _, ok := c.params[field.Name]; !ok {
+					showName := field.Name
+					jsonTag := field.Tag.Get("json")
+					if len(jsonTag) > 0 {
+						jsonName := strings.Split(jsonTag, ",")
+						showName = jsonName[0]
+					}
+					return errors.New(fmt.Sprintf("required param `%s` is nil", showName))
+				}
+				break
+			}
+		}
+	}
 	body, err := json.Marshal(c.params)
 	if err != nil {
 		return err
