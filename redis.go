@@ -19,6 +19,7 @@ type RedisConfig struct {
 	DbNum    int
 	Host     string
 	Port     int
+	Prefix   string
 }
 
 // 返回默认的redis配置
@@ -28,6 +29,7 @@ func defRedisConfig() *RedisConfig {
 		Host:   "127.0.0.1",
 		Port:   6379,
 		DbNum:  0,
+		Prefix: "flow",
 	}
 }
 
@@ -47,14 +49,18 @@ type RedisClient struct {
 	rdb      *redis.Client
 }
 
+func (rd *RedisClient) fillKey(key string) string {
+	return fmt.Sprintf("%s-%s", rd.app.redisConfig.Prefix, key)
+}
+
 // 获取原始的字符串值
 func (rd *RedisClient) GetRaw(key string) (string, error) {
-	return rd.rdb.Get(ctx, key).Result()
+	return rd.rdb.Get(ctx, rd.fillKey(key)).Result()
 }
 
 // 将值赋值给指定的结构对象
 func (rd *RedisClient) Get(key string, v interface{}) error {
-	val, err := rd.rdb.Get(ctx, key).Result()
+	val, err := rd.rdb.Get(ctx, rd.fillKey(key)).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return Nil
@@ -66,7 +72,7 @@ func (rd *RedisClient) Get(key string, v interface{}) error {
 
 // 设置原始的字符串值
 func (rd *RedisClient) SetRaw(key string, value string, expiration time.Duration) error {
-	return rd.rdb.Set(ctx, key, value, expiration).Err()
+	return rd.rdb.Set(ctx, rd.fillKey(key), value, expiration).Err()
 }
 
 // 设置结构体或者map的值
@@ -77,7 +83,7 @@ func (rd *RedisClient) Set(key string, value interface{}, expiration time.Durati
 		if err != nil {
 			return err
 		}
-		return rd.rdb.Set(ctx, key, string(val), expiration).Err()
+		return rd.rdb.Set(ctx, rd.fillKey(key), string(val), expiration).Err()
 	default:
 		return errors.New("value is neither map nor struct")
 	}
@@ -103,6 +109,7 @@ func initRedis(app *Application) {
 		if err != nil {
 			panic(err)
 		}
+		app.redis.app = app
 		logFactory.Info("redis server init ok")
 	}
 }
