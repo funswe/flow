@@ -30,7 +30,7 @@ func (cr CurlResult) Parse(v interface{}) error {
 }
 
 // 返回原始的请求字符串结果数据
-func (cr CurlResult) Raw(v interface{}) string {
+func (cr CurlResult) Raw() string {
 	return string(cr)
 }
 
