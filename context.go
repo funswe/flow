@@ -114,13 +114,13 @@ func (c *Context) Parse(object interface{}) error {
 		for _, tag := range ss {
 			kv := strings.Split(tag, ":")
 			if kv[0] == "required" && kv[1] == "true" {
-				if _, ok := c.params[field.Name]; !ok {
-					showName := field.Name
-					jsonTag := field.Tag.Get("json")
-					if len(jsonTag) > 0 {
-						jsonName := strings.Split(jsonTag, ",")
-						showName = jsonName[0]
-					}
+				showName := field.Name
+				jsonTag := field.Tag.Get("json")
+				if len(jsonTag) > 0 {
+					jsonName := strings.Split(jsonTag, ",")
+					showName = jsonName[0]
+				}
+				if _, ok := c.params[showName]; !ok {
 					return errors.New(fmt.Sprintf("required param `%s` is nil", showName))
 				}
 				break
