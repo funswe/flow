@@ -25,6 +25,7 @@ type Context struct {
 	Orm    *Orm                   // 数据库操作对象，引用app的orm对象
 	Redis  *RedisClient           // redis操作对象，引用app的redis对象
 	Curl   *Curl                  // httpclient操作对象，引用app的curl对象
+	Jwt    *Jwt                   // JWT操作对象，引用app的jwt对象
 }
 
 // 返回一个新的context对象
@@ -61,7 +62,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})
-	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.orm, Redis: app.redis, Curl: app.curl}
+	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.orm, Redis: app.redis, Curl: app.curl, Jwt: app.jwt}
 }
 
 // 获取请求的参数
