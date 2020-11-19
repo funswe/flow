@@ -3,6 +3,7 @@ module github.com/funswe/flow
 go 1.15
 
 require (
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/flosch/pongo2 v0.0.0-20190505152737-8914e1cf9164
 	github.com/go-redis/redis/v8 v8.3.3

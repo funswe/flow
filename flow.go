@@ -50,6 +50,7 @@ var (
 		orm:          defOrm(),
 		redis:        defRedis(),
 		curl:         defCurl(),
+		jwt:          defJwt(),
 	}
 )
 
@@ -113,6 +114,14 @@ func SetCurlConfig(curlConfig *CurlConfig) {
 		curlConfig = defCurlConfig()
 	}
 	app.setCurlConfig(curlConfig)
+}
+
+// 设置JWT配置
+func SetJwtConfig(jwtConfig *JwtConfig) {
+	if jwtConfig == nil {
+		jwtConfig = defJwtConfig()
+	}
+	app.setJwtConfig(jwtConfig)
 }
 
 // 启动服务

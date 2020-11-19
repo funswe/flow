@@ -81,10 +81,12 @@ type Application struct {
 	redisConfig  *RedisConfig  // redis配置
 	corsConfig   *CorsConfig   // 跨域配置
 	curlConfig   *CurlConfig   // httpclient配置
+	jwtConfig    *JwtConfig    // JWT配置
 	middleware   []Middleware  //中间件集合
 	orm          *Orm          // 数据库ORM对象，用于数据库操作
 	redis        *RedisClient  // redis对象，用户redis操作
 	curl         *Curl         // httpclient对象，用于发送http请求，如get，post
+	jwt          *Jwt          // JWT对象
 }
 
 // 启动服务
@@ -112,6 +114,8 @@ func (app *Application) run() error {
 	initRedis(app)
 	// 初始化curl
 	initCurl(app)
+	// 初始化jwt
+	initJwt(app)
 	// 启动一个独立的携程处理请求ID的递增
 	go func() {
 		for {
@@ -177,5 +181,11 @@ func (app *Application) setCorsConfig(corsConfig *CorsConfig) *Application {
 // 设置httpclient配置
 func (app *Application) setCurlConfig(curlConfig *CurlConfig) *Application {
 	app.curlConfig = curlConfig
+	return app
+}
+
+// 设置JWT配置
+func (app *Application) setJwtConfig(jwtConfig *JwtConfig) *Application {
+	app.jwtConfig = jwtConfig
 	return app
 }
