@@ -55,7 +55,14 @@ func (rd *RedisClient) fillKey(key string) string {
 
 // 获取原始的字符串值
 func (rd *RedisClient) GetRaw(key string) (string, error) {
-	return rd.rdb.Get(ctx, rd.fillKey(key)).Result()
+	val, err := rd.rdb.Get(ctx, rd.fillKey(key)).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return "", Nil
+		}
+		return "", err
+	}
+	return val, nil
 }
 
 // 将值赋值给指定的结构对象
