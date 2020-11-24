@@ -51,7 +51,7 @@ func (j *Jwt) Sign(data map[string]interface{}) (string, error) {
 
 func (j *Jwt) Valid(token string) (map[string]interface{}, error) {
 	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return j.app.jwtConfig.SecretKey, nil
+		return []byte(j.app.jwtConfig.SecretKey), nil
 	})
 	if err != nil {
 		return nil, err

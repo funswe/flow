@@ -107,6 +107,72 @@ type Orm struct {
 	JoinType *OrmJoinType // 数据库JOIN表类型对象
 }
 
+// 定义查询字符段的结构体
+type Fields struct {
+	fields []*OrmColumn
+}
+
+// 添加查询字段，可以链式处理
+func (f *Fields) Add(column string, table ...string) *Fields {
+	if len(column) == 0 {
+		return f
+	}
+	c := &OrmColumn{
+		Column: column,
+	}
+	if len(table) >= 2 {
+		c.Table = table[0]
+		c.Alias = table[1]
+	} else if len(table) == 1 {
+		c.Table = table[0]
+	}
+	f.fields = append(f.fields, c)
+	return f
+}
+
+func (f *Fields) Get() []*OrmColumn {
+	return f.fields
+}
+
+type Conditions struct {
+	conditions []*OrmWhere
+}
+
+// 添加查询条件，可以链式处理
+func (c *Conditions) Add(columnName, op string, val interface{}, table ...string) *Conditions {
+	if len(columnName) == 0 {
+		return c
+	}
+	column := &OrmColumn{
+		Column: columnName,
+	}
+	if len(table) >= 2 {
+		column.Table = table[0]
+		column.Alias = table[1]
+	} else if len(table) == 1 {
+		column.Table = table[0]
+	}
+	w := &OrmWhere{
+		Column: column,
+		Opt:    op,
+		Value:  val,
+	}
+	c.conditions = append(c.conditions, w)
+	return c
+}
+
+func (c *Conditions) Get() []*OrmWhere {
+	return c.conditions
+}
+
+func (orm *Orm) NewConditions() *Conditions {
+	return &Conditions{conditions: make([]*OrmWhere, 0)}
+}
+
+func (orm *Orm) NewFields() *Fields {
+	return &Fields{fields: make([]*OrmColumn, 0)}
+}
+
 // 返回grom db对象，用于原生查询使用
 func (orm *Orm) DB() *gorm.DB {
 	if orm.db == nil {

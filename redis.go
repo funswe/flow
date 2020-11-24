@@ -42,6 +42,19 @@ func (e NotExistError) Error() string { return string(e) }
 
 func (NotExistError) NotExistError() {}
 
+// 定义返回的结果
+type RedisResult string
+
+// 将返回的结果定义到给定的对象里
+func (rr RedisResult) Parse(v interface{}) error {
+	return json.Unmarshal([]byte(string(rr)), v)
+}
+
+// 返回原始的请求字符串结果数据
+func (rr RedisResult) Raw() string {
+	return string(rr)
+}
+
 // 定义redis操作对象
 type RedisClient struct {
 	app      *Application
@@ -54,7 +67,7 @@ func (rd *RedisClient) fillKey(key string) string {
 }
 
 // 获取原始的字符串值
-func (rd *RedisClient) GetRaw(key string) (string, error) {
+func (rd *RedisClient) Get(key string) (RedisResult, error) {
 	val, err := rd.rdb.Get(ctx, rd.fillKey(key)).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -62,24 +75,7 @@ func (rd *RedisClient) GetRaw(key string) (string, error) {
 		}
 		return "", err
 	}
-	return val, nil
-}
-
-// 将值赋值给指定的结构对象
-func (rd *RedisClient) Get(key string, v interface{}) error {
-	val, err := rd.rdb.Get(ctx, rd.fillKey(key)).Result()
-	if err != nil {
-		if err == redis.Nil {
-			return Nil
-		}
-		return err
-	}
-	return json.Unmarshal([]byte(val), v)
-}
-
-// 设置原始的字符串值
-func (rd *RedisClient) SetRaw(key string, value string, expiration time.Duration) error {
-	return rd.rdb.Set(ctx, rd.fillKey(key), value, expiration).Err()
+	return RedisResult(val), nil
 }
 
 // 设置结构体或者map的值
@@ -91,8 +87,10 @@ func (rd *RedisClient) Set(key string, value interface{}, expiration time.Durati
 			return err
 		}
 		return rd.rdb.Set(ctx, rd.fillKey(key), string(val), expiration).Err()
+	case reflect.String:
+		return rd.rdb.Set(ctx, rd.fillKey(key), value, expiration).Err()
 	default:
-		return errors.New("value is neither map nor struct")
+		return errors.New("value is neither map nor struct or string")
 	}
 }
 
