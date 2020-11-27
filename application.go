@@ -125,6 +125,7 @@ func (app *Application) run() error {
 	}()
 	// 添加默认的中间件
 	app.middleware = append([]Middleware{func(ctx *Context, next Next) {
+		// 添加请求日志打印
 		start := time.Now()
 		ctx.Logger.Infof("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
 		next()
@@ -132,6 +133,7 @@ func (app *Application) run() error {
 		ctx.Logger.Infof("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.GetStatusCode())
 	}, func(ctx *Context, next Next) {
 		ctx.SetHeader(HttpHeaderXPoweredBy, app.serverConfig.AppName)
+		// 添加跨域支持
 		if app.corsConfig.Enable {
 			ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
 			ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethods)
