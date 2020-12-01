@@ -66,7 +66,6 @@ func (rd *RedisClient) fillKey(key string) string {
 	return fmt.Sprintf("%s-%s", rd.app.redisConfig.Prefix, key)
 }
 
-// 获取原始的字符串值
 func (rd *RedisClient) Get(key string) (RedisResult, error) {
 	val, err := rd.rdb.Get(ctx, rd.fillKey(key)).Result()
 	if err != nil {
@@ -78,7 +77,6 @@ func (rd *RedisClient) Get(key string) (RedisResult, error) {
 	return RedisResult(val), nil
 }
 
-// 设置结构体或者map的值
 func (rd *RedisClient) Set(key string, value interface{}, expiration time.Duration) error {
 	switch reflect.TypeOf(value).Kind() {
 	case reflect.Ptr, reflect.Map:
@@ -92,6 +90,10 @@ func (rd *RedisClient) Set(key string, value interface{}, expiration time.Durati
 	default:
 		return errors.New("value is neither map nor struct or string")
 	}
+}
+
+func (rd *RedisClient) Delete(key string) error {
+	return rd.rdb.Del(ctx, rd.fillKey(key)).Err()
 }
 
 // 返回默认的redis操作对象
