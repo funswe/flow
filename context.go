@@ -15,6 +15,22 @@ import (
 	"sync"
 )
 
+type FieldValidateError struct {
+	Type  string
+	Value interface{}
+	Field string
+	Param string
+}
+
+func (e *FieldValidateError) Error() string {
+	switch e.Type {
+	case "required":
+		return fmt.Sprintf("required param `%s` is nil", e.Param)
+	default:
+		return fmt.Sprintf("required param `%s` is nil", e.Param)
+	}
+}
+
 // 定义请求上下文对象
 type Context struct {
 	req    *request               // 请求封装的request对象
@@ -297,7 +313,11 @@ func (c *Context) Parse(object interface{}) error {
 					showName = jsonName[0]
 				}
 				if _, ok := c.params[showName]; !ok {
-					return errors.New(fmt.Sprintf("required param `%s` is nil", showName))
+					return &FieldValidateError{
+						Type:  "required",
+						Field: field.Name,
+						Param: showName,
+					}
 				}
 				break
 			}
