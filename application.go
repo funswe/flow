@@ -138,6 +138,7 @@ func (app *Application) run() error {
 			ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
 			ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethods)
 			ctx.SetHeader(HttpHeaderCorsHeaders, app.corsConfig.AllowedHeaders)
+			ctx.SetHeader(HttpHeaderCorsMaxAge, "172800")
 		}
 		next()
 	}}, app.middleware...)

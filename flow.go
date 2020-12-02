@@ -35,6 +35,7 @@ const (
 	HttpHeaderCorsOrigin              = "Access-Control-Allow-Origin"
 	HttpHeaderCorsMethods             = "Access-Control-Allow-Methods"
 	HttpHeaderCorsHeaders             = "Access-Control-Allow-Headers"
+	HttpHeaderCorsMaxAge              = "Access-Control-Max-Age"
 )
 
 var (
