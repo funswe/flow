@@ -6,14 +6,19 @@ import (
 	"github.com/funswe/flow/log"
 	"github.com/funswe/flow/utils/json"
 	"github.com/julienschmidt/httprouter"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 )
+
+const defaultMultipartMemory = 32 << 20 // 32 MB
 
 type FieldValidateError struct {
 	Type  string
@@ -52,7 +57,12 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	req := newRequest(r, reqId, app)
 	// 封装请求的response对象
 	res := newResponse(w, req, app)
-	r.ParseForm()
+	ct := req.getHeader("Content-Type")
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		r.ParseMultipartForm(defaultMultipartMemory)
+	} else {
+		r.ParseForm()
+	}
 	mapParams := make(map[string]interface{})
 	if len(params) > 0 {
 		for i := range params {
@@ -328,6 +338,38 @@ func (c *Context) Parse(object interface{}) error {
 		return err
 	}
 	return json.Unmarshal(body, object)
+}
+
+func (c *Context) FormFile(name string) (*multipart.FileHeader, error) {
+	if c.req.req.MultipartForm == nil {
+		if err := c.req.req.ParseMultipartForm(defaultMultipartMemory); err != nil {
+			return nil, err
+		}
+	}
+	f, fh, err := c.req.req.FormFile(name)
+	if err != nil {
+		return nil, err
+	}
+	f.Close()
+	return fh, err
+}
+
+// 保存上传的文件到指定位置
+func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string, flag int) error {
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	out, err := os.OpenFile(dst, flag, 0644)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, src)
+	return err
 }
 
 // 获取请求的所有头信息

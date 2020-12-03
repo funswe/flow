@@ -66,6 +66,13 @@ func (rd *RedisClient) fillKey(key string) string {
 	return fmt.Sprintf("%s-%s", rd.app.redisConfig.Prefix, key)
 }
 
+func (rd *RedisClient) Close() error {
+	if rd.rdb != nil {
+		return rd.rdb.Close()
+	}
+	return nil
+}
+
 func (rd *RedisClient) Get(key string) (RedisResult, error) {
 	val, err := rd.rdb.Get(ctx, rd.fillKey(key)).Result()
 	if err != nil {
