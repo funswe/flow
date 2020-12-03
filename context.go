@@ -57,8 +57,8 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	req := newRequest(r, reqId, app)
 	// 封装请求的response对象
 	res := newResponse(w, req, app)
-	ct := req.getHeader("Content-Type")
-	if strings.HasPrefix(ct, "multipart/form-data") {
+	// 判断是不是上传文件
+	if strings.HasPrefix(req.getHeader("Content-Type"), "multipart/form-data") {
 		r.ParseMultipartForm(defaultMultipartMemory)
 	} else {
 		r.ParseForm()
