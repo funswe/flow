@@ -15,7 +15,7 @@ type JwtConfig struct {
 // 返回默认的JWT配置
 func defJwtConfig() *JwtConfig {
 	return &JwtConfig{
-		Timeout: 24 * time.Hour, // 默认2小时有效时间
+		Timeout: 24 * time.Hour, // 默认24小时有效时间
 	}
 }
 

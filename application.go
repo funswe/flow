@@ -24,10 +24,12 @@ type ServerConfig struct {
 // 返回默认的服务配置
 func defServerConfig() *ServerConfig {
 	return &ServerConfig{
-		AppName: defAppName(),
-		Proxy:   defProxy(),
-		Host:    defHost(),
-		Port:    defPort(),
+		AppName:    defAppName(),
+		Proxy:      defProxy(),
+		Host:       defHost(),
+		Port:       defPort(),
+		ViewPath:   defViewPath(),
+		StaticPath: defStaticPath(),
 	}
 }
 
@@ -59,6 +61,16 @@ func defHost() string {
 
 func defPort() int {
 	return 9505
+}
+
+func defViewPath() string {
+	path, _ := filepath.Abs(".")
+	return filepath.Join(path, "views")
+}
+
+func defStaticPath() string {
+	path, _ := filepath.Abs(".")
+	return filepath.Join(path, "statics")
 }
 
 func defLoggerPath() string {

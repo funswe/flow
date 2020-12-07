@@ -2,7 +2,7 @@ package flow
 
 // 定义跨域配置
 type CorsConfig struct {
-	Enable         bool // 是否开始跨域支持
+	Enable         bool // 是否开启跨域支持
 	AllowOrigin    string
 	AllowedHeaders string
 	AllowedMethods string
