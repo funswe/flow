@@ -106,7 +106,6 @@ func ALL(path string, handler Handler) {
 
 func defaultErrorHandle() PanicHandler {
 	return func(w http.ResponseWriter, r *http.Request, err interface{}) {
-		logFactory.Error(err, "\n", string(debug.Stack()))
 		w.Header().Set(HttpHeaderContentType, "text/plain; charset=utf-8")
 		w.WriteHeader(500)
 		if v, ok := err.(string); ok {
