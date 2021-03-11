@@ -132,7 +132,10 @@ func SetPanicHandler(ph PanicHandler) {
 	if ph == nil {
 		ph = defaultErrorHandle()
 	}
-	router.PanicHandler = ph
+	router.PanicHandler = func(w http.ResponseWriter, r *http.Request, err interface{}) {
+		logFactory.Error(err, "\n", string(debug.Stack()))
+		ph(w, r, err)
+	}
 }
 
 func SetNotFoundHandle(nfh NotFoundHandle) {
