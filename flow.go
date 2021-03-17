@@ -48,6 +48,7 @@ var (
 		redisConfig:  defRedisConfig(),
 		corsConfig:   defCorsConfig(),
 		curlConfig:   defCurlConfig(),
+		jwtConfig:    defJwtConfig(),
 		orm:          defOrm(),
 		redis:        defRedis(),
 		curl:         defCurl(),
