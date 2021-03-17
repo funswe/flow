@@ -152,6 +152,10 @@ func (app *Application) run() error {
 			ctx.SetHeader(HttpHeaderCorsHeaders, app.corsConfig.AllowedHeaders)
 			ctx.SetHeader(HttpHeaderCorsMaxAge, "172800")
 		}
+		if ctx.GetMethod() == HttpMethodOptions {
+			ctx.res.raw([]byte("true"))
+			return
+		}
 		next()
 	}}, app.middleware...)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port), router)
