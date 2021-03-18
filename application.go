@@ -208,3 +208,38 @@ func (app *Application) setJwtConfig(jwtConfig *JwtConfig) *Application {
 	app.jwtConfig = jwtConfig
 	return app
 }
+
+// 获取服务配置
+func (app *Application) GetServerConfig() *ServerConfig {
+	return app.serverConfig
+}
+
+// 获取日志服务
+func (app *Application) GetLoggerConfig() *LoggerConfig {
+	return app.loggerConfig
+}
+
+// 获取数据库配置
+func (app *Application) GetOrmConfig() *OrmConfig {
+	return app.ormConfig
+}
+
+// 获取redis配置
+func (app *Application) GetRedisConfig() *RedisConfig {
+	return app.redisConfig
+}
+
+// 获取跨域服务
+func (app *Application) GetCorsConfig() *CorsConfig {
+	return app.corsConfig
+}
+
+// 获取httpclient配置
+func (app *Application) GetCurlConfig() *CurlConfig {
+	return app.curlConfig
+}
+
+// 获取JWT配置
+func (app *Application) GetJwtConfig() *JwtConfig {
+	return app.jwtConfig
+}
