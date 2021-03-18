@@ -103,6 +103,7 @@ type Application struct {
 
 // 启动服务
 func (app *Application) run() error {
+	router.ServeFiles("/files/*filepath", http.Dir(app.serverConfig.StaticPath))
 	logFactory = log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+".log", app.loggerConfig.LoggerLevel)
 	app.logger = logFactory.Create(map[string]interface{}{
 		"appName":     app.serverConfig.AppName,
