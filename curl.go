@@ -5,6 +5,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/google/go-querystring/query"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -56,7 +57,15 @@ func (c *Curl) Get(url string, data interface{}, headers map[string]string) (*Cu
 		logFactory.Errorf("curl request end, error: %s", err.Error())
 		return nil, err
 	}
-	logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
+	showBody := false
+	if strings.HasPrefix(res.Header().Get("Content-Type"), "application/json") || strings.HasPrefix(res.Header().Get("Content-Type"), "text") {
+		showBody = true
+	}
+	if showBody {
+		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
+	} else {
+		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time())
+	}
 	return &CurlResult{res}, nil
 }
 
@@ -74,7 +83,15 @@ func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*C
 		logFactory.Errorf("curl request end, error: %s", err.Error())
 		return nil, err
 	}
-	logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
+	showBody := false
+	if strings.HasPrefix(res.Header().Get("Content-Type"), "application/json") || strings.HasPrefix(res.Header().Get("Content-Type"), "text") {
+		showBody = true
+	}
+	if showBody {
+		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
+	} else {
+		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time())
+	}
 	return &CurlResult{res}, nil
 }
 
