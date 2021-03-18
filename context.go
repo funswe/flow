@@ -485,6 +485,11 @@ func (c *Context) Body(body string) {
 	c.res.text(body)
 }
 
+// 返回buffer数据
+func (c *Context) Buffer(buffer []byte) {
+	c.res.raw(buffer)
+}
+
 // 返回服务端渲染文本信息
 func (c *Context) Render(tmpFile string, data map[string]interface{}) {
 	c.res.render(tmpFile, data)
