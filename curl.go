@@ -22,21 +22,13 @@ func defCurlConfig() *CurlConfig {
 }
 
 // 定义返回的结果
-type CurlResult []byte
+type CurlResult struct {
+	*resty.Response
+}
 
 // 将返回的结果定义到给定的对象里
-func (cr CurlResult) Parse(v interface{}) error {
-	return json.Unmarshal(cr, v)
-}
-
-// 返回原始的请求结果数据
-func (cr CurlResult) Raw() []byte {
-	return cr
-}
-
-// 返回原始的请求字符串结果数据
-func (cr CurlResult) String() string {
-	return string(cr)
+func (cr *CurlResult) Parse(v interface{}) error {
+	return json.Unmarshal(cr.Body(), v)
 }
 
 // 定义httpclient对象
@@ -49,7 +41,7 @@ func defCurl() *Curl {
 	return &Curl{}
 }
 
-func (c *Curl) Get(url string, data interface{}, headers map[string]string) (CurlResult, error) {
+func (c *Curl) Get(url string, data interface{}, headers map[string]string) (*CurlResult, error) {
 	logFactory.Debugf("curl request start, method: get, url: %s, data: %v, headers: %v", url, data, headers)
 	r := c.client.R().SetHeaders(c.app.curlConfig.Headers)
 	if data != nil {
@@ -65,10 +57,10 @@ func (c *Curl) Get(url string, data interface{}, headers map[string]string) (Cur
 		return nil, err
 	}
 	logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
-	return CurlResult(res.Body()), nil
+	return &CurlResult{res}, nil
 }
 
-func (c *Curl) Post(url string, data interface{}, headers map[string]string) (CurlResult, error) {
+func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*CurlResult, error) {
 	logFactory.Debugf("curl request start, method: post, url: %s, data: %v, headers: %v", url, data, headers)
 	r := c.client.R().SetHeaders(c.app.curlConfig.Headers)
 	if data != nil {
@@ -83,7 +75,7 @@ func (c *Curl) Post(url string, data interface{}, headers map[string]string) (Cu
 		return nil, err
 	}
 	logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
-	return CurlResult(res.Body()), nil
+	return &CurlResult{res}, nil
 }
 
 // 初始化httpclient对象
