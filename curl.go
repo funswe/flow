@@ -58,7 +58,7 @@ func (c *Curl) Get(url string, data interface{}, headers map[string]string) (*Cu
 		return nil, err
 	}
 	showBody := false
-	if strings.HasPrefix(res.Header().Get("Content-Type"), "application/json") || strings.HasPrefix(res.Header().Get("Content-Type"), "text") {
+	if strings.HasPrefix(res.Header().Get(HttpHeaderContentType), "application/json") || strings.HasPrefix(res.Header().Get(HttpHeaderContentType), "text") {
 		showBody = true
 	}
 	if showBody {
@@ -84,7 +84,7 @@ func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*C
 		return nil, err
 	}
 	showBody := false
-	if strings.HasPrefix(res.Header().Get("Content-Type"), "application/json") || strings.HasPrefix(res.Header().Get("Content-Type"), "text") {
+	if strings.HasPrefix(res.Header().Get(HttpHeaderContentType), "application/json") || strings.HasPrefix(res.Header().Get(HttpHeaderContentType), "text") {
 		showBody = true
 	}
 	if showBody {
