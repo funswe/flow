@@ -64,7 +64,7 @@ func (c *Curl) Get(url string, data interface{}, headers map[string]string) (*Cu
 	if showBody {
 		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
 	} else {
-		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time())
+		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s", res.StatusCode(), res.Time())
 	}
 	return &CurlResult{res}, nil
 }
@@ -90,7 +90,7 @@ func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*C
 	if showBody {
 		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
 	} else {
-		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time())
+		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s", res.StatusCode(), res.Time())
 	}
 	return &CurlResult{res}, nil
 }
