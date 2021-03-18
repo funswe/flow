@@ -144,7 +144,7 @@ func (app *Application) run() error {
 		cost := time.Since(start)
 		ctx.Logger.Infof("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.GetStatusCode())
 	}, func(ctx *Context, next Next) {
-		ctx.SetHeader(HttpHeaderXPoweredBy, app.serverConfig.AppName)
+		ctx.SetHeader(HttpHeaderXPoweredBy, "flow")
 		// 添加跨域支持
 		if app.corsConfig.Enable {
 			ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
