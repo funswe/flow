@@ -2,13 +2,11 @@ package flow
 
 import (
 	"fmt"
+	"github.com/funswe/flow/log"
+	"github.com/funswe/flow/utils/files"
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
-
-	"github.com/funswe/flow/log"
-	"github.com/funswe/flow/utils/files"
 )
 
 // 定义服务配置
@@ -94,7 +92,6 @@ type Application struct {
 	corsConfig   *CorsConfig   // 跨域配置
 	curlConfig   *CurlConfig   // httpclient配置
 	jwtConfig    *JwtConfig    // JWT配置
-	middleware   []Middleware  //中间件集合
 	orm          *Orm          // 数据库ORM对象，用于数据库操作
 	redis        *RedisClient  // redis对象，用户redis操作
 	curl         *Curl         // httpclient对象，用于发送http请求，如get，post
@@ -139,36 +136,7 @@ func (app *Application) run() error {
 			app.rc <- app.reqId
 		}
 	}()
-	// 添加默认的中间件
-	app.middleware = append([]Middleware{func(ctx *Context, next Next) {
-		// 添加请求日志打印
-		start := time.Now()
-		ctx.Logger.Infof("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
-		next()
-		cost := time.Since(start)
-		ctx.Logger.Infof("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.GetStatusCode())
-	}, func(ctx *Context, next Next) {
-		ctx.SetHeader(HttpHeaderXPoweredBy, "flow")
-		// 添加跨域支持
-		if app.corsConfig.Enable {
-			ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
-			ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethods)
-			ctx.SetHeader(HttpHeaderCorsHeaders, app.corsConfig.AllowedHeaders)
-			ctx.SetHeader(HttpHeaderCorsMaxAge, "172800")
-		}
-		if ctx.GetMethod() == HttpMethodOptions {
-			ctx.res.raw([]byte("true"))
-			return
-		}
-		next()
-	}}, app.middleware...)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port), router)
-}
-
-// 添加中间件
-func (app *Application) use(m Middleware) *Application {
-	app.middleware = append(app.middleware, m)
-	return app
 }
 
 // 设置服务配置

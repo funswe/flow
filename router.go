@@ -4,6 +4,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"runtime/debug"
+	"time"
 )
 
 var (
@@ -15,6 +16,10 @@ var (
 func init() {
 	router.PanicHandler = panicHandler
 	router.NotFound = notFoundHandle
+}
+
+type RouterGroup struct {
+	middleware []Middleware
 }
 
 type Next func()
@@ -33,53 +38,93 @@ type Middleware func(ctx *Context, next Next)
 // 定义路由处理器
 type Handler func(ctx *Context)
 
-func dispatch(ctx *Context, index int, handler Handler) Next {
-	if index >= len(app.middleware) {
+func dispatch(ctx *Context, index int, handler Handler, rg *RouterGroup) Next {
+	if index >= len(rg.middleware) {
 		return func() {
 			handler(ctx)
 		}
 	}
 	return func() {
-		app.middleware[index](ctx, dispatch(ctx, index+1, handler))
+		rg.middleware[index](ctx, dispatch(ctx, index+1, handler, rg))
 	}
 }
 
-func handle(handler Handler) func(http.ResponseWriter, *http.Request, httprouter.Params) {
+func handle(handler Handler, rg *RouterGroup) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		rwr := rwresponse{w, 200}
 		ctx := newContext(&rwr, r, params, <-app.rc, app)
-		dispatch(ctx, 0, handler)()
+		dispatch(ctx, 0, handler, rg)()
 	}
 }
 
-func GET(path string, handler Handler) {
-	router.Handle(HttpMethodGet, path, handle(handler))
-	router.Handle(HttpMethodOptions, path, handle(handler))
+func GetRouterGroup() *RouterGroup {
+	rg := &RouterGroup{}
+	// 添加默认的中间件
+	rg.middleware = append([]Middleware{func(ctx *Context, next Next) {
+		// 添加请求日志打印
+		start := time.Now()
+		ctx.Logger.Infof("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
+		next()
+		cost := time.Since(start)
+		ctx.Logger.Infof("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.GetStatusCode())
+	}, func(ctx *Context, next Next) {
+		ctx.SetHeader(HttpHeaderXPoweredBy, "flow")
+		// 添加跨域支持
+		if app.corsConfig.Enable {
+			ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
+			ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethods)
+			ctx.SetHeader(HttpHeaderCorsHeaders, app.corsConfig.AllowedHeaders)
+			ctx.SetHeader(HttpHeaderCorsMaxAge, "172800")
+		}
+		if ctx.GetMethod() == HttpMethodOptions {
+			ctx.res.raw([]byte("true"))
+			return
+		}
+		next()
+	}}, rg.middleware...)
+	return rg
 }
 
-func HEAD(path string, handler Handler) {
-	router.Handle(HttpMethodHead, path, handle(handler))
-	router.Handle(HttpMethodOptions, path, handle(handler))
+// 添加中间件
+func (rg *RouterGroup) Use(m Middleware) *RouterGroup {
+	rg.middleware = append(rg.middleware, m)
+	return rg
 }
 
-func POST(path string, handler Handler) {
-	router.Handle(HttpMethodPost, path, handle(handler))
-	router.Handle(HttpMethodOptions, path, handle(handler))
+func (rg *RouterGroup) GET(path string, handler Handler) *RouterGroup {
+	router.Handle(HttpMethodGet, path, handle(handler, rg))
+	router.Handle(HttpMethodOptions, path, handle(handler, rg))
+	return rg
 }
 
-func PUT(path string, handler Handler) {
-	router.Handle(HttpMethodPut, path, handle(handler))
-	router.Handle(HttpMethodOptions, path, handle(handler))
+func (rg *RouterGroup) HEAD(path string, handler Handler) *RouterGroup {
+	router.Handle(HttpMethodHead, path, handle(handler, rg))
+	router.Handle(HttpMethodOptions, path, handle(handler, rg))
+	return rg
 }
 
-func PATCH(path string, handler Handler) {
-	router.Handle(HttpMethodPatch, path, handle(handler))
-	router.Handle(HttpMethodOptions, path, handle(handler))
+func (rg *RouterGroup) POST(path string, handler Handler) *RouterGroup {
+	router.Handle(HttpMethodPost, path, handle(handler, rg))
+	router.Handle(HttpMethodOptions, path, handle(handler, rg))
+	return rg
 }
 
-func DELETE(path string, handler Handler) {
-	router.Handle(HttpMethodDelete, path, handle(handler))
-	router.Handle(HttpMethodOptions, path, handle(handler))
+func (rg *RouterGroup) PUT(path string, handler Handler) *RouterGroup {
+	router.Handle(HttpMethodPut, path, handle(handler, rg))
+	router.Handle(HttpMethodOptions, path, handle(handler, rg))
+	return rg
+}
+
+func (rg *RouterGroup) PATCH(path string, handler Handler) *RouterGroup {
+	router.Handle(HttpMethodPatch, path, handle(handler, rg))
+	router.Handle(HttpMethodOptions, path, handle(handler, rg))
+	return rg
+}
+
+func (rg *RouterGroup) DELETE(path string, handler Handler) *RouterGroup {
+	router.Handle(HttpMethodDelete, path, handle(handler, rg))
+	router.Handle(HttpMethodOptions, path, handle(handler, rg))
+	return rg
 }
 
 //func StaticFiles(prefix, path string) {
@@ -94,14 +139,15 @@ func DELETE(path string, handler Handler) {
 //	router.ServeFiles(prefix, http.Dir(path))
 //}
 
-func ALL(path string, handler Handler) {
-	router.Handle(HttpMethodGet, path, handle(handler))
-	router.Handle(HttpMethodHead, path, handle(handler))
-	router.Handle(HttpMethodPost, path, handle(handler))
-	router.Handle(HttpMethodPut, path, handle(handler))
-	router.Handle(HttpMethodPatch, path, handle(handler))
-	router.Handle(HttpMethodDelete, path, handle(handler))
-	router.Handle(HttpMethodOptions, path, handle(handler))
+func (rg *RouterGroup) ALL(path string, handler Handler) *RouterGroup {
+	router.Handle(HttpMethodGet, path, handle(handler, rg))
+	router.Handle(HttpMethodHead, path, handle(handler, rg))
+	router.Handle(HttpMethodPost, path, handle(handler, rg))
+	router.Handle(HttpMethodPut, path, handle(handler, rg))
+	router.Handle(HttpMethodPatch, path, handle(handler, rg))
+	router.Handle(HttpMethodDelete, path, handle(handler, rg))
+	router.Handle(HttpMethodOptions, path, handle(handler, rg))
+	return rg
 }
 
 func defaultErrorHandle() PanicHandler {

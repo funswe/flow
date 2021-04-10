@@ -54,11 +54,12 @@ var (
 		curl:         defCurl(),
 		jwt:          defJwt(),
 	}
+	defRouterGroup = &RouterGroup{}
 )
 
 // 添加中间件
 func Use(m Middleware) {
-	app.use(m)
+	defRouterGroup.Use(m)
 }
 
 // 设置服务配置
@@ -124,6 +125,34 @@ func SetJwtConfig(jwtConfig *JwtConfig) {
 		jwtConfig = defJwtConfig()
 	}
 	app.setJwtConfig(jwtConfig)
+}
+
+func GET(path string, handler Handler) {
+	defRouterGroup.GET(path, handler)
+}
+
+func HEAD(path string, handler Handler) {
+	defRouterGroup.HEAD(path, handler)
+}
+
+func POST(path string, handler Handler) {
+	defRouterGroup.POST(path, handler)
+}
+
+func PUT(path string, handler Handler) {
+	defRouterGroup.PUT(path, handler)
+}
+
+func PATCH(path string, handler Handler) {
+	defRouterGroup.PATCH(path, handler)
+}
+
+func DELETE(path string, handler Handler) {
+	defRouterGroup.DELETE(path, handler)
+}
+
+func ALL(path string, handler Handler) {
+	defRouterGroup.ALL(path, handler)
 }
 
 // 启动服务
