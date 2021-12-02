@@ -1,10 +1,10 @@
 # flow
-flow是一个golang的web框架，使用koajs的洋葱圈中间件模型，框架内置了ORM，REDIS，HTTPCLIENT，JWT得益于[httprouter](https://github.com/julienschmidt/httprouter) ,性能提高30倍
+flow是一个golang的web框架，使用koajs的洋葱圈中间件模型，框架内置了Orm，Redis，HttpClient，Jwt等工具，得益于[httprouter](https://github.com/julienschmidt/httprouter) ,性能提高30倍
 
 # 安装
 - go get -u github.com/funswe/flow
 
-# SERVER配置
+# Server配置
 ```
 type ServerConfig struct {
 	AppName    string // 应用名称，默认值flow
@@ -15,7 +15,7 @@ type ServerConfig struct {
 	StaticPath string // 服务器静态资源路径，默认值当前目录下的statics
 }
 ```
-# LOGGER配置
+# Logger配置
 日志使用的是[logrus](https://github.com/sirupsen/logrus) ，使用[rotatelogs](https://github.com/lestrrat-go/file-rotatelogs) 按日期分割日志
 ```
 type LoggerConfig struct {
@@ -23,7 +23,7 @@ type LoggerConfig struct {
 	LoggerPath  string // 日志存放目录，默认值当前目录下的logs
 }
 ```
-# ORM配置
+# Orm配置
 orm框架使用的是[gorm](https://github.com/go-gorm/gorm) ，暂时只支持mysql
 ```
 type OrmConfig struct {
@@ -43,7 +43,7 @@ type OrmPool struct {
 	ConnMaxIdleTime int64 // 连接池里面的连接最大空闲时长，单位秒，默认值10
 }
 ```
-# REDIS配置
+# Redis配置
 redis使用的是[go-redis](https://github.com/go-redis/redis/v8)
 ```
 type RedisConfig struct {
@@ -55,7 +55,7 @@ type RedisConfig struct {
 	Prefix   string // redis的key前缀，默认值flow
 }
 ```
-# HTTPCLIENT配置
+# HttpClient配置
 httpclient使用的是[go-resty](https://github.com/go-resty/resty/v2)
 ```
 type CurlConfig struct {
@@ -63,7 +63,7 @@ type CurlConfig struct {
 	Headers map[string]string // 统一请求的头信息
 }
 ```
-# JWT配置
+# Jwt配置
 jwt使用的是[jwt-go](https://github.com/golang-jwt/jwt)
 ```
 type JwtConfig struct {
