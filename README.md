@@ -64,7 +64,7 @@ type CurlConfig struct {
 }
 ```
 # JWT配置
-jwt使用的是[jwt-go](https://github.com/dgrijalva/jwt-go)
+jwt使用的是[jwt-go](https://github.com/golang-jwt/jwt)
 ```
 type JwtConfig struct {
 	Timeout   time.Duration // 请求的超时时间，单位小时，默认值24
