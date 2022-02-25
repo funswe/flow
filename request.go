@@ -2,6 +2,7 @@ package flow
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -166,4 +167,21 @@ func (r *request) isFresh(res *response) bool {
 // 获取请求的UA
 func (r *request) getUserAgent() string {
 	return r.req.UserAgent()
+}
+
+// 获取请求的客户端的IP
+func (r *request) getClientIp() string {
+	xForwardedFor := r.getHeader(HttpHeaderXForwardedFor)
+	ip := strings.TrimSpace(strings.Split(xForwardedFor, ",")[0])
+	if len(ip) != 0 {
+		return ip
+	}
+	ip = strings.TrimSpace(r.getHeader(HttpHeaderXRealIp))
+	if len(ip) != 0 {
+		return ip
+	}
+	if ip, _, err := net.SplitHostPort(strings.TrimSpace(r.req.RemoteAddr)); err == nil {
+		return ip
+	}
+	return ""
 }

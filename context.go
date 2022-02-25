@@ -442,6 +442,11 @@ func (c *Context) GetUserAgent() string {
 	return c.req.getUserAgent()
 }
 
+// 获取请求的客户端的IP
+func (c *Context) GetClientIp() string {
+	return c.req.getClientIp()
+}
+
 // 获取返回的http状态码
 func (c *Context) GetStatusCode() int {
 	return c.res.getStatusCode()

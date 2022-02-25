@@ -27,6 +27,8 @@ const (
 	HttpHeaderEtag                    = "Etag"
 	HttpHeaderXForwardedHost          = "X-Forwarded-Host"
 	HttpHeaderXForwardedProto         = "X-Forwarded-Proto"
+	HttpHeaderXForwardedFor           = "X-Forwarded-For"
+	HttpHeaderXRealIp                 = "X-Real-Ip"
 	HttpHeaderIfModifiedSince         = "If-Modified-Since"
 	HttpHeaderIfNoneMatch             = "If-None-Match"
 	HttpHeaderLastModified            = "Last-Modified"
