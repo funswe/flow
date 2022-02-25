@@ -14,3 +14,4 @@
 vendor
 logs
 test
+/ssl-refresh/
