@@ -3,7 +3,6 @@ package flow
 import (
 	"github.com/funswe/flow/utils/json"
 	"github.com/go-resty/resty/v2"
-	"github.com/google/go-querystring/query"
 	"net/http"
 	"strings"
 	"time"
@@ -42,12 +41,11 @@ func defCurl() *Curl {
 	return &Curl{}
 }
 
-func (c *Curl) Get(url string, data interface{}, headers map[string]string) (*CurlResult, error) {
+func (c *Curl) Get(url string, data map[string]string, headers map[string]string) (*CurlResult, error) {
 	logFactory.Debugf("curl request start, method: get, url: %s, data: %v, headers: %v", url, data, headers)
 	r := c.client.R().SetHeaders(c.app.curlConfig.Headers)
 	if data != nil {
-		v, _ := query.Values(data)
-		r.SetQueryParamsFromValues(v)
+		r.SetQueryParams(data)
 	}
 	if len(headers) > 0 {
 		r.SetHeaders(headers)
