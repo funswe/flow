@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/flosch/pongo2"
 	"github.com/funswe/flow/utils/json"
 )
 
@@ -105,21 +104,6 @@ func (r *response) json(data map[string]interface{}) {
 func (r *response) text(data string) {
 	r.setHeader(HttpHeaderContentType, "text/plain; charset=utf-8")
 	r.raw([]byte(data))
-}
-
-// 返回服务端渲染的文本数据
-func (r *response) render(tmpFile string, data map[string]interface{}) {
-	tpl, err := pongo2.FromCache(filepath.Join(app.serverConfig.ViewPath, tmpFile))
-	if err != nil {
-		panic(err)
-	}
-	b, err := tpl.ExecuteBytes(data)
-	//err = tpl.ExecuteWriter(data, r.res)
-	if err != nil {
-		panic(err)
-	}
-	r.setHeader(HttpHeaderContentType, "text/html; charset=utf-8")
-	r.raw(b)
 }
 
 func (r *response) raw(data []byte) {

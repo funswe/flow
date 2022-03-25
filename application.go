@@ -15,7 +15,6 @@ type ServerConfig struct {
 	Proxy      bool   // 是否是代理模式
 	Host       string // 服务启动地址
 	Port       int    // 服务端口
-	ViewPath   string // 服务端渲染视图文件路径，使用pongo2模板
 	StaticPath string // 服务器静态资源路径
 }
 
@@ -26,7 +25,6 @@ func defServerConfig() *ServerConfig {
 		Proxy:      defProxy(),
 		Host:       defHost(),
 		Port:       defPort(),
-		ViewPath:   defViewPath(),
 		StaticPath: defStaticPath(),
 	}
 }
@@ -59,11 +57,6 @@ func defHost() string {
 
 func defPort() int {
 	return 9505
-}
-
-func defViewPath() string {
-	path, _ := filepath.Abs(".")
-	return filepath.Join(path, "views")
 }
 
 func defStaticPath() string {
@@ -110,7 +103,6 @@ func (app *Application) run() error {
 		"proxy":       app.serverConfig.Proxy,
 		"host":        app.serverConfig.Host,
 		"port":        app.serverConfig.Port,
-		"viewPath":    app.serverConfig.ViewPath,
 		"loggerPath":  app.loggerConfig.LoggerPath,
 		"loggerLevel": app.loggerConfig.LoggerLevel,
 		"staticPath":  app.serverConfig.StaticPath,

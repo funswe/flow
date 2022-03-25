@@ -4,15 +4,14 @@ go 1.15
 
 require (
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
-	github.com/flosch/pongo2 v0.0.0-20190505152737-8914e1cf9164
 	github.com/go-redis/redis/v8 v8.3.3
 	github.com/go-resty/resty/v2 v2.3.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/google/go-querystring v1.0.0
 	github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/json-iterator/go v1.1.10
 	github.com/julienschmidt/httprouter v1.3.0
+	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lestrrat-go/envload v0.0.0-20180220234015-a3eb8ddeffcc // indirect
 	github.com/lestrrat-go/file-rotatelogs v2.2.0+incompatible
 	github.com/lestrrat-go/strftime v0.0.0-20180821113735-8b31f9c59b0f // indirect

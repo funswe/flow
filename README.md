@@ -11,7 +11,6 @@ type ServerConfig struct {
 	Proxy      bool   // 是否是代理模式，默认值false
 	Host       string // 服务启动地址，默认值127.0.0.1
 	Port       int    // 服务端口，默认值9505
-	ViewPath   string // 服务端渲染视图文件路径，使用pongo2模板，默认值当前目录下的views目录
 	StaticPath string // 服务器静态资源路径，默认值当前目录下的statics
 }
 ```
@@ -167,9 +166,6 @@ func main() {
 ```
 
 # [更多例子](https://github.com/funswe/flow-example)
-
-# 模板
-使用的HTML模板[pongo2](https://github.com/flosch/pongo2)
 
 
 
