@@ -495,11 +495,6 @@ func (c *Context) Buffer(buffer []byte) {
 	c.res.raw(buffer)
 }
 
-// 返回服务端渲染文本信息
-func (c *Context) Render(tmpFile string, data map[string]interface{}) {
-	c.res.render(tmpFile, data)
-}
-
 // 获取app对象
 func (c *Context) GetApp() *Application {
 	return c.app
