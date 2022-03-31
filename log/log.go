@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/funswe/flow/utils/files"
 	"github.com/funswe/flow/utils/json"
@@ -63,7 +64,7 @@ func (f *MyFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	} else {
 		b = &bytes.Buffer{}
 	}
-	logTime := entry.Time.Format("2006-01-02 15:04:05.000")
+	logTime := entry.Time.In(time.Local).Format("2006-01-02 15:04:05.000")
 	b.WriteString(logTime)
 	b.WriteByte('[')
 	logLevel := entry.Level.String()
