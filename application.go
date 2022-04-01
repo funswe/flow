@@ -35,6 +35,8 @@ type LoggerConfig struct {
 	LoggerPath  string
 }
 
+type BeforeRun func(app *Application)
+
 // 返回默认的日志配置
 func defLoggerConfig() *LoggerConfig {
 	return &LoggerConfig{
@@ -89,6 +91,7 @@ type Application struct {
 	redis        *RedisClient  // redis对象，用户redis操作
 	curl         *Curl         // httpclient对象，用于发送http请求，如get，post
 	jwt          *Jwt          // JWT对象
+	beforeRuns   []BeforeRun   // 运行前需要执行的函数列表
 }
 
 // 启动服务
@@ -128,6 +131,9 @@ func (app *Application) run() error {
 			app.rc <- app.reqId
 		}
 	}()
+	for _, beforeRun := range app.beforeRuns {
+		beforeRun(app)
+	}
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port), router)
 }
 
@@ -170,6 +176,12 @@ func (app *Application) setCurlConfig(curlConfig *CurlConfig) *Application {
 // 设置JWT配置
 func (app *Application) setJwtConfig(jwtConfig *JwtConfig) *Application {
 	app.jwtConfig = jwtConfig
+	return app
+}
+
+// 添加运行前需要执行的方法
+func (app *Application) addBefore(b BeforeRun) *Application {
+	app.beforeRuns = append(app.beforeRuns, b)
 	return app
 }
 

@@ -157,6 +157,11 @@ func ALL(path string, handler Handler) {
 	defRouterGroup.ALL(path, handler)
 }
 
+// 添加运行前需要执行的方法
+func AddBefore(b BeforeRun) {
+	app.addBefore(b)
+}
+
 // 启动服务
 func Run() error {
 	return app.run()
