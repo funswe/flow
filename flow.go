@@ -55,6 +55,7 @@ var (
 		redis:        defRedis(),
 		curl:         defCurl(),
 		jwt:          defJwt(),
+		beforeRuns:   make([]BeforeRun, 0),
 	}
 	defRouterGroup = &RouterGroup{}
 )
