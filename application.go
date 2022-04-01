@@ -87,10 +87,10 @@ type Application struct {
 	corsConfig   *CorsConfig   // 跨域配置
 	curlConfig   *CurlConfig   // httpclient配置
 	jwtConfig    *JwtConfig    // JWT配置
-	orm          *Orm          // 数据库ORM对象，用于数据库操作
-	redis        *RedisClient  // redis对象，用户redis操作
-	curl         *Curl         // httpclient对象，用于发送http请求，如get，post
-	jwt          *Jwt          // JWT对象
+	Orm          *Orm          // 数据库ORM对象，用于数据库操作
+	Redis        *RedisClient  // redis对象，用户redis操作
+	Curl         *Curl         // httpclient对象，用于发送http请求，如get，post
+	Jwt          *Jwt          // JWT对象
 	beforeRuns   []BeforeRun   // 运行前需要执行的函数列表
 }
 

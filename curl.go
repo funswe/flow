@@ -95,9 +95,9 @@ func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*C
 
 // 初始化httpclient对象
 func initCurl(app *Application) {
-	app.curl.client = resty.NewWithClient(&http.Client{
+	app.Curl.client = resty.NewWithClient(&http.Client{
 		Timeout: app.curlConfig.Timeout,
 	})
-	app.curl.app = app
+	app.Curl.app = app
 	logFactory.Info("curl server init ok")
 }

@@ -118,12 +118,12 @@ func initRedis(app *Application) {
 			Password: app.redisConfig.Password,
 			DB:       app.redisConfig.DbNum,
 		})
-		app.redis.rdb = rdb
+		app.Redis.rdb = rdb
 		err := rdb.Ping(ctx).Err()
 		if err != nil {
 			panic(err)
 		}
-		app.redis.app = app
+		app.Redis.app = app
 		logFactory.Info("redis server init ok")
 	}
 }

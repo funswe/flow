@@ -51,10 +51,10 @@ var (
 		corsConfig:   defCorsConfig(),
 		curlConfig:   defCurlConfig(),
 		jwtConfig:    defJwtConfig(),
-		orm:          defOrm(),
-		redis:        defRedis(),
-		curl:         defCurl(),
-		jwt:          defJwt(),
+		Orm:          defOrm(),
+		Redis:        defRedis(),
+		Curl:         defCurl(),
+		Jwt:          defJwt(),
 		beforeRuns:   make([]BeforeRun, 0),
 	}
 	defRouterGroup = &RouterGroup{}

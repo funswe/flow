@@ -635,7 +635,7 @@ func initDB(app *Application) {
 		if err != nil {
 			panic(err)
 		}
-		app.orm.db = db
+		app.Orm.db = db
 		logFactory.Info("db server init ok")
 	}
 }

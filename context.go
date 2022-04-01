@@ -90,7 +90,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})
-	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.orm, Redis: app.redis, Curl: app.curl, Jwt: app.jwt}
+	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.Orm, Redis: app.Redis, Curl: app.Curl, Jwt: app.Jwt}
 }
 
 // 保存用户设置的数据
