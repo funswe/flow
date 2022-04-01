@@ -79,7 +79,7 @@ func defLoggerLevel() string {
 type Application struct {
 	reqId        int64         // 请求ID，每次递增1，服务重启就从1开始计数
 	rc           chan int64    // 请求ID的传递channel
-	logger       *log.Logger   // 日志对象
+	Logger       *log.Logger   // 日志对象
 	serverConfig *ServerConfig // 服务配置
 	loggerConfig *LoggerConfig // 日志配置
 	ormConfig    *OrmConfig    // 数据库配置
@@ -101,7 +101,7 @@ func (app *Application) run() error {
 	}
 	router.ServeFiles("/files/*filepath", http.Dir(app.serverConfig.StaticPath))
 	logFactory = log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+".log", app.loggerConfig.LoggerLevel)
-	app.logger = logFactory.Create(map[string]interface{}{
+	app.Logger = logFactory.Create(map[string]interface{}{
 		"appName":     app.serverConfig.AppName,
 		"proxy":       app.serverConfig.Proxy,
 		"host":        app.serverConfig.Host,
@@ -110,7 +110,7 @@ func (app *Application) run() error {
 		"loggerLevel": app.loggerConfig.LoggerLevel,
 		"staticPath":  app.serverConfig.StaticPath,
 	})
-	app.logger.Info("start params")
+	app.Logger.Info("start params")
 	if len(app.serverConfig.StaticPath) != 0 {
 		if !files.PathExists(app.serverConfig.StaticPath) {
 			os.MkdirAll(app.serverConfig.StaticPath, os.ModePerm)

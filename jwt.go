@@ -64,6 +64,6 @@ func (j *Jwt) Valid(token string) (map[string]interface{}, error) {
 
 // 初始化JWT对象
 func initJwt(app *Application) {
-	app.jwt.app = app
+	app.Jwt.app = app
 	logFactory.Info("jwt server init ok")
 }
