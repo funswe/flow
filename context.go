@@ -296,6 +296,11 @@ func (c *Context) GetBoolParamDefault(key string, def bool) (value bool) {
 	return val
 }
 
+// 获取原始请求实体
+func (c *Context) GetRawBody() string {
+	return c.req.getRaw()
+}
+
 // 解析请求的参数，将参数赋值到给定的对象里
 func (c *Context) Parse(object interface{}) error {
 	if object == nil {

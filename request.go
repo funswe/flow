@@ -185,3 +185,10 @@ func (r *request) getClientIp() string {
 	}
 	return ""
 }
+
+func (r *request) getRaw() string {
+	len := r.req.ContentLength
+	body := make([]byte, len)
+	r.req.Body.Read(body)
+	return string(body)
+}
