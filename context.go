@@ -38,17 +38,19 @@ func (e *FieldValidateError) Error() string {
 
 // 定义请求上下文对象
 type Context struct {
-	req    *request               // 请求封装的request对象
-	res    *response              // 请求封装的response对象
-	mu     sync.RWMutex           // 互斥锁，用于data map
-	data   map[string]interface{} // 用于保存用户定义的数据
-	params map[string]interface{} // 请求的参数，包括POST，GET和路由的参数
-	app    *Application           // 服务的APP对象
-	Logger *log.Logger            // 上下文的logger对象，打印日志会自动带上请求的相关参数
-	Orm    *Orm                   // 数据库操作对象，引用app的orm对象
-	Redis  *RedisClient           // redis操作对象，引用app的redis对象
-	Curl   *Curl                  // httpclient操作对象，引用app的curl对象
-	Jwt    *Jwt                   // JWT操作对象，引用app的jwt对象
+	req        *request               // 请求封装的request对象
+	res        *response              // 请求封装的response对象
+	mu         sync.RWMutex           // 互斥锁，用于data map
+	rawBody    []byte                 // 原始的请求实体
+	rawBodyErr error                  // 获取原始请求实体的错误
+	data       map[string]interface{} // 用于保存用户定义的数据
+	params     map[string]interface{} // 请求的参数，包括POST，GET和路由的参数
+	app        *Application           // 服务的APP对象
+	Logger     *log.Logger            // 上下文的logger对象，打印日志会自动带上请求的相关参数
+	Orm        *Orm                   // 数据库操作对象，引用app的orm对象
+	Redis      *RedisClient           // redis操作对象，引用app的redis对象
+	Curl       *Curl                  // httpclient操作对象，引用app的curl对象
+	Jwt        *Jwt                   // JWT操作对象，引用app的jwt对象
 }
 
 // 返回一个新的context对象
@@ -72,12 +74,16 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	for k := range r.Form {
 		mapParams[k] = r.FormValue(k)
 	}
+	var rawBody []byte
+	var err error
+	if r.Body != nil {
+		rawBody, err = ioutil.ReadAll(r.Body)
+	}
 	// 如果是json请求，解析json数据，如果form参数和json参数相同，json参数覆盖form参数
-	if r.Body != nil && strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		result, err := ioutil.ReadAll(r.Body)
-		if err == nil && len(result) > 0 {
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		if err == nil && len(rawBody) > 0 {
 			jsonMap := make(map[string]interface{})
-			err = json.Unmarshal(result, &jsonMap)
+			err = json.Unmarshal(rawBody, &jsonMap)
 			if err == nil {
 				for k := range jsonMap {
 					mapParams[k] = jsonMap[k]
@@ -90,7 +96,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		"reqId": req.id,
 		"ua":    req.getUserAgent(),
 	})
-	return &Context{req: req, res: res, params: mapParams, Logger: ctxLogger, app: app, Orm: app.Orm, Redis: app.Redis, Curl: app.Curl, Jwt: app.Jwt}
+	return &Context{req: req, res: res, params: mapParams, rawBody: rawBody, rawBodyErr: err, Logger: ctxLogger, app: app, Orm: app.Orm, Redis: app.Redis, Curl: app.Curl, Jwt: app.Jwt}
 }
 
 // 保存用户设置的数据
@@ -297,8 +303,13 @@ func (c *Context) GetBoolParamDefault(key string, def bool) (value bool) {
 }
 
 // 获取原始请求实体
-func (c *Context) GetRawBody() string {
-	return c.req.getRaw()
+func (c *Context) GetRawBody() ([]byte, error) {
+	return c.rawBody, c.rawBodyErr
+}
+
+// 获取原始请求实体string
+func (c *Context) GetRawStringBody() (string, error) {
+	return string(c.rawBody), c.rawBodyErr
 }
 
 // 解析请求的参数，将参数赋值到给定的对象里
