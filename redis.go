@@ -103,6 +103,36 @@ func (rd *RedisClient) Delete(key string) error {
 	return rd.rdb.Del(ctx, rd.fillKey(key)).Err()
 }
 
+func (rd *RedisClient) GetWithOutPrefix(key string) (RedisResult, error) {
+	val, err := rd.rdb.Get(ctx, key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return "", Nil
+		}
+		return "", err
+	}
+	return RedisResult(val), nil
+}
+
+func (rd *RedisClient) SetWithOutPrefix(key string, value interface{}, expiration time.Duration) error {
+	switch reflect.TypeOf(value).Kind() {
+	case reflect.Ptr, reflect.Map:
+		val, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		return rd.rdb.Set(ctx, key, string(val), expiration).Err()
+	case reflect.String:
+		return rd.rdb.Set(ctx, key, value, expiration).Err()
+	default:
+		return errors.New("value is neither map nor struct or string")
+	}
+}
+
+func (rd *RedisClient) DeleteWithOutPrefix(key string) error {
+	return rd.rdb.Del(ctx, key).Err()
+}
+
 // 返回默认的redis操作对象
 func defRedis() *RedisClient {
 	return &RedisClient{
