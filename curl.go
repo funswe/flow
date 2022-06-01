@@ -42,7 +42,7 @@ func defCurl() *Curl {
 }
 
 func (c *Curl) Get(url string, data map[string]string, headers map[string]string) (*CurlResult, error) {
-	logFactory.Debugf("curl request start, method: get, url: %s, data: %v, headers: %v", url, data, headers)
+	logFactory.Debugf("curl request start, method: get, url: %s, data: %+v, headers: %+v", url, data, headers)
 	r := c.client.R().SetHeaders(c.app.curlConfig.Headers)
 	if data != nil {
 		r.SetQueryParams(data)
@@ -68,7 +68,7 @@ func (c *Curl) Get(url string, data map[string]string, headers map[string]string
 }
 
 func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*CurlResult, error) {
-	logFactory.Debugf("curl request start, method: post, url: %s, data: %v, headers: %v", url, data, headers)
+	logFactory.Debugf("curl request start, method: post, url: %s, data: %+v, headers: %+v", url, data, headers)
 	r := c.client.R().SetHeaders(c.app.curlConfig.Headers)
 	if data != nil {
 		r.SetBody(data)
