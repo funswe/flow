@@ -106,6 +106,12 @@ func (r *response) text(data string) {
 	r.raw([]byte(data))
 }
 
+// 返回html数据
+func (r *response) html(data string) {
+	r.setHeader(HttpHeaderContentType, "text/html; charset=utf-8")
+	r.raw([]byte(data))
+}
+
 func (r *response) raw(data []byte) {
 	//etag := fmt.Sprintf("%x", sha1.Sum(data))
 	//r.setHeader(HttpHeaderEtag, etag)

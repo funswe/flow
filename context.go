@@ -506,6 +506,11 @@ func (c *Context) Body(body string) {
 	c.res.text(body)
 }
 
+// 返回html数据
+func (c *Context) Html(html string) {
+	c.res.html(html)
+}
+
 // 返回buffer数据
 func (c *Context) Buffer(buffer []byte) {
 	c.res.raw(buffer)
