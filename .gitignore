@@ -15,3 +15,4 @@ vendor
 logs
 test
 /ssl-refresh/
+go.sum
