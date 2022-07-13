@@ -8,8 +8,9 @@ type TaskResult struct {
 }
 
 type Task interface {
-	Run(app *Application) *TaskResult
+	Execute(app *Application, data map[string]interface{}) *TaskResult
 	Completed(app *Application, result *TaskResult)
 	Timeout(app *Application)
 	GetTimeout() time.Duration
+	GetExecuteData() map[string]interface{}
 }

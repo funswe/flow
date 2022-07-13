@@ -172,7 +172,7 @@ func Run() error {
 func ExecuteTask(task Task) {
 	c := make(chan *TaskResult)
 	go func() {
-		c <- task.Run(app)
+		c <- task.Execute(app, task.GetExecuteData())
 	}()
 	go func() {
 		select {
