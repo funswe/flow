@@ -172,13 +172,16 @@ func Run() error {
 func ExecuteTask(task Task) {
 	c := make(chan *TaskResult)
 	go func() {
+		task.Start()
 		c <- task.Execute(app)
 	}()
 	go func() {
 		select {
 		case result := <-c:
+			task.Stop()
 			task.Completed(app, result)
 		case <-time.After(task.GetTimeout()):
+			task.Stop()
 			task.Timeout(app)
 		}
 	}()
