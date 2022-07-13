@@ -2,6 +2,7 @@ package flow
 
 import (
 	"github.com/funswe/flow/log"
+	"time"
 )
 
 // 定义请求的方法
@@ -166,4 +167,19 @@ func AddBefore(b BeforeRun) {
 // 启动服务
 func Run() error {
 	return app.run()
+}
+
+func ExecuteTask(task Task) {
+	c := make(chan *TaskResult)
+	go func() {
+		c <- task.Run(app)
+	}()
+	go func() {
+		select {
+		case result := <-c:
+			task.Completed(app, result)
+		case <-time.After(task.GetTimeout()):
+			task.Timeout(app)
+		}
+	}()
 }
