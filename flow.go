@@ -181,7 +181,6 @@ func ExecuteTask(task Task) {
 			task.AfterExecute(app)
 			task.Completed(app, result)
 		case <-time.After(task.GetTimeout()):
-			task.AfterExecute(app)
 			task.Timeout(app)
 		}
 	}()
