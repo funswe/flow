@@ -4,7 +4,7 @@ import "time"
 
 type TaskResult struct {
 	Err  error
-	Data map[string]interface{}
+	Data interface{}
 }
 
 type Task interface {
