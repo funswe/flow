@@ -14,4 +14,16 @@ type Task interface {
 	Completed(app *Application, result *TaskResult)
 	Timeout(app *Application)
 	GetTimeout() time.Duration
+	IsTimeout() bool
+}
+
+type AsyncTask interface {
+	GetName() string
+	Aggregation(app *Application, newTask AsyncTask)
+	Execute(app *Application) *TaskResult
+	Completed(app *Application, result *TaskResult)
+	Timeout(app *Application)
+	GetTimeout() time.Duration
+	GetDelay() time.Duration
+	IsTimeout() bool
 }

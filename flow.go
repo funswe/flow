@@ -2,6 +2,7 @@ package flow
 
 import (
 	"github.com/funswe/flow/log"
+	"sync"
 	"time"
 )
 
@@ -59,6 +60,8 @@ var (
 		beforeRuns:   make([]BeforeRun, 0),
 	}
 	defRouterGroup = &RouterGroup{}
+	asyncTaskLock  = sync.RWMutex{}
+	asyncTaskPool  = make(map[string]AsyncTask, 0)
 )
 
 // 添加中间件
@@ -178,7 +181,38 @@ func ExecuteTask(task Task) {
 	go func() {
 		select {
 		case result := <-c:
+			if task.IsTimeout() {
+				return
+			}
 			task.AfterExecute(app)
+			task.Completed(app, result)
+		case <-time.After(task.GetTimeout()):
+			task.Timeout(app)
+		}
+	}()
+}
+
+func ExecuteAsyncTask(task AsyncTask) {
+	asyncTaskLock.Lock()
+	if existTask, ok := asyncTaskPool[task.GetName()]; ok {
+		existTask.Aggregation(app, task)
+		asyncTaskLock.Unlock()
+		return
+	}
+	asyncTaskPool[task.GetName()] = task
+	asyncTaskLock.Unlock()
+	c := make(chan *TaskResult)
+	go func() {
+		<-time.After(task.GetDelay())
+		delete(asyncTaskPool, task.GetName())
+		c <- task.Execute(app)
+	}()
+	go func() {
+		select {
+		case result := <-c:
+			if task.IsTimeout() {
+				return
+			}
 			task.Completed(app, result)
 		case <-time.After(task.GetTimeout()):
 			task.Timeout(app)
