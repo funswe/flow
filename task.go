@@ -20,6 +20,8 @@ type Task interface {
 type AsyncTask interface {
 	GetName() string
 	Aggregation(app *Application, newTask AsyncTask)
+	BeforeExecute(app *Application)
+	AfterExecute(app *Application)
 	Execute(app *Application) *TaskResult
 	Completed(app *Application, result *TaskResult)
 	Timeout(app *Application)

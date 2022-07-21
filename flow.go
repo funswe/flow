@@ -205,6 +205,7 @@ func ExecuteAsyncTask(task AsyncTask) {
 	go func() {
 		<-time.After(task.GetDelay())
 		delete(asyncTaskPool, task.GetName())
+		task.BeforeExecute(app)
 		c <- task.Execute(app)
 	}()
 	go func() {
@@ -213,6 +214,7 @@ func ExecuteAsyncTask(task AsyncTask) {
 			if task.IsTimeout() {
 				return
 			}
+			task.AfterExecute(app)
 			task.Completed(app, result)
 		case <-time.After(task.GetTimeout()):
 			task.Timeout(app)
