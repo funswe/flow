@@ -2,7 +2,7 @@ package flow
 
 import (
 	"errors"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"time"
 )
 
@@ -29,15 +29,15 @@ func defJwt() *Jwt {
 }
 
 type Claims struct {
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 	Data map[string]interface{}
 }
 
 func (j *Jwt) Sign(data map[string]interface{}) (string, error) {
 	claims := &Claims{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(app.jwtConfig.Timeout).Unix(), // 过期时间，必须设置
-			Issuer:    "flow",                                       // 可不必设置，也可以填充用户名，
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(app.jwtConfig.Timeout)), // 过期时间，必须设置
+			Issuer:    "flow",                                                    // 可不必设置，也可以填充用户名，
 		},
 		Data: data,
 	}
