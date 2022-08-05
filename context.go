@@ -36,10 +36,11 @@ func (e *FieldValidateError) Error() string {
 	}
 }
 
-// 定义请求上下文对象
+// Context 定义请求上下文对象
 type Context struct {
 	req        *request               // 请求封装的request对象
 	res        *response              // 请求封装的response对象
+	statusCode int                    // 返回的http状态码
 	mu         sync.RWMutex           // 互斥锁，用于data map
 	rawBody    []byte                 // 原始的请求实体
 	rawBodyErr error                  // 获取原始请求实体的错误
@@ -99,7 +100,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	return &Context{req: req, res: res, params: mapParams, rawBody: rawBody, rawBodyErr: err, Logger: ctxLogger, app: app, Orm: app.Orm, Redis: app.Redis, Curl: app.Curl, Jwt: app.Jwt}
 }
 
-// 保存用户设置的数据
+// SetData 保存key / value数据
 func (c *Context) SetData(key string, value interface{}) {
 	c.mu.Lock()
 	if c.data == nil {
@@ -109,7 +110,7 @@ func (c *Context) SetData(key string, value interface{}) {
 	c.mu.Unlock()
 }
 
-// 获取用户保存的值
+// GetData 获取数据
 func (c *Context) GetData(key string) (value interface{}, exists bool) {
 	c.mu.RLock()
 	value, exists = c.data[key]
@@ -117,7 +118,7 @@ func (c *Context) GetData(key string) (value interface{}, exists bool) {
 	return
 }
 
-// 获取请求的string参数，如果参数类型不是string，则会转换成string，只支持基本类型转换
+// GetStringParam 获取请求的string参数，如果参数类型不是string，则会转换成string，只支持基本类型转换
 func (c *Context) GetStringParam(key string) (value string) {
 	if val, ok := c.params[key]; ok && val != nil {
 		switch jv := c.params[key].(type) {
@@ -145,7 +146,7 @@ func (c *Context) GetStringParam(key string) (value string) {
 	return
 }
 
-// GetStringParam方法的带默认值
+// GetStringParamDefault GetStringParam方法的带默认值
 func (c *Context) GetStringParamDefault(key string, def string) (value string) {
 	val := c.GetStringParam(key)
 	if len(val) == 0 {
@@ -154,7 +155,7 @@ func (c *Context) GetStringParamDefault(key string, def string) (value string) {
 	return val
 }
 
-// 获取请求的int参数，如果参数类型不是int，则会转换成int，只支持基本类型转换
+// GetIntParam 获取请求的int参数，如果参数类型不是int，则会转换成int，只支持基本类型转换
 func (c *Context) GetIntParam(key string) (value int) {
 	if val, ok := c.params[key]; ok && val != nil {
 		switch jv := c.params[key].(type) {
@@ -182,7 +183,7 @@ func (c *Context) GetIntParam(key string) (value int) {
 	return
 }
 
-// GetIntParam方法的带默认值
+// GetIntParamDefault GetIntParam方法的带默认值
 func (c *Context) GetIntParamDefault(key string, def int) (value int) {
 	val := c.GetIntParam(key)
 	if val == 0 {
@@ -191,7 +192,7 @@ func (c *Context) GetIntParamDefault(key string, def int) (value int) {
 	return val
 }
 
-// 获取请求的int64参数，如果参数类型不是int64，则会转换成int64，只支持基本类型转换
+// GetInt64Param 获取请求的int64参数，如果参数类型不是int64，则会转换成int64，只支持基本类型转换
 func (c *Context) GetInt64Param(key string) (value int64) {
 	if val, ok := c.params[key]; ok && val != nil {
 		switch jv := c.params[key].(type) {
@@ -220,7 +221,7 @@ func (c *Context) GetInt64Param(key string) (value int64) {
 	return
 }
 
-// GetInt64Param方法的带默认值
+// GetInt64ParamDefault GetInt64Param方法的带默认值
 func (c *Context) GetInt64ParamDefault(key string, def int64) (value int64) {
 	val := c.GetInt64Param(key)
 	if val == 0 {
@@ -229,7 +230,7 @@ func (c *Context) GetInt64ParamDefault(key string, def int64) (value int64) {
 	return val
 }
 
-// 获取请求的float64参数，如果参数类型不是float64，则会转换成float64，只支持基本类型转换
+// GetFloat64Param 获取请求的float64参数，如果参数类型不是float64，则会转换成float64，只支持基本类型转换
 func (c *Context) GetFloat64Param(key string) (value float64) {
 	if val, ok := c.params[key]; ok && val != nil {
 		switch jv := c.params[key].(type) {
@@ -258,7 +259,7 @@ func (c *Context) GetFloat64Param(key string) (value float64) {
 	return
 }
 
-// GetFloat64Param方法的带默认值
+// GetFloat64ParamDefault GetFloat64Param方法的带默认值
 func (c *Context) GetFloat64ParamDefault(key string, def float64) (value float64) {
 	val := c.GetFloat64Param(key)
 	if val == 0 {
@@ -267,7 +268,7 @@ func (c *Context) GetFloat64ParamDefault(key string, def float64) (value float64
 	return val
 }
 
-// 获取请求的bool参数，如果参数类型不是bool，则会转换成bool，只支持基本类型转换
+// GetBoolParam 获取请求的bool参数，如果参数类型不是bool，则会转换成bool，只支持基本类型转换
 func (c *Context) GetBoolParam(key string) (value bool) {
 	if val, ok := c.params[key]; ok && val != nil {
 		switch jv := c.params[key].(type) {
@@ -293,7 +294,7 @@ func (c *Context) GetBoolParam(key string) (value bool) {
 	return
 }
 
-// GetBoolParam方法的带默认值
+// GetBoolParamDefault GetBoolParam方法的带默认值
 func (c *Context) GetBoolParamDefault(key string, def bool) (value bool) {
 	val := c.GetBoolParam(key)
 	if !val {
@@ -302,17 +303,17 @@ func (c *Context) GetBoolParamDefault(key string, def bool) (value bool) {
 	return val
 }
 
-// 获取原始请求实体
+// GetRawBody 获取原始请求实体
 func (c *Context) GetRawBody() ([]byte, error) {
 	return c.rawBody, c.rawBodyErr
 }
 
-// 获取原始请求实体string
+// GetRawStringBody 获取原始请求实体string
 func (c *Context) GetRawStringBody() (string, error) {
 	return string(c.rawBody), c.rawBodyErr
 }
 
-// 解析请求的参数，将参数赋值到给定的对象里
+// Parse 解析请求的参数，将参数赋值到给定的对象里
 func (c *Context) Parse(object interface{}) error {
 	if object == nil {
 		return errors.New("object can not be nil")
@@ -370,7 +371,7 @@ func (c *Context) FormFile(name string) (*multipart.FileHeader, error) {
 	return fh, err
 }
 
-// 保存上传的文件到指定位置
+// SaveUploadedFile 保存上传的文件到指定位置
 func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string, flag int) error {
 	src, err := file.Open()
 	if err != nil {
@@ -388,135 +389,129 @@ func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string, flag 
 	return err
 }
 
-// 获取请求的所有头信息
+// GetHeaders 获取请求的所有头信息
 func (c *Context) GetHeaders() map[string][]string {
 	return c.req.getHeaders()
 }
 
-// 获取请求的头信息
+// GetHeader 获取请求的头信息
 func (c *Context) GetHeader(key string) string {
 	return c.req.getHeader(key)
 }
 
-// 获取请求的URI
+// GetUri 获取请求的URI
 func (c *Context) GetUri() string {
 	return c.req.getUri()
 }
 
-// 获取请求的HOST信息
+// GetHost 获取请求的HOST信息
 func (c *Context) GetHost() string {
 	return c.req.getHost()
 }
 
-// 获取请求的协议，http or https
+// GetProtocol 获取请求的协议，http or https
 func (c *Context) GetProtocol() string {
 	return c.req.getProtocol()
 }
 
-// 判断是不是https请求
+// IsSecure 判断是不是https请求
 func (c *Context) IsSecure() bool {
 	return c.req.isSecure()
 }
 
-// 获取请求的地址
+// GetOrigin 获取请求的地址
 func (c *Context) GetOrigin() string {
 	return c.req.getOrigin()
 }
 
-// 获取请求的完整链接
+// GetHref 获取请求的完整链接
 func (c *Context) GetHref() string {
 	return c.req.getHref()
 }
 
-// 获取请求的方法，如GET,POST
+// GetMethod 获取请求的方法，如GET,POST
 func (c *Context) GetMethod() string {
 	return c.req.getMethod()
 }
 
-// 获取请求的query参数，map格式
+// GetQuery 获取请求的query参数，map格式
 func (c *Context) GetQuery() url.Values {
 	return c.req.getQuery()
 }
 
-// 获取请求的querystring
+// GetQuerystring 获取请求的querystring
 func (c *Context) GetQuerystring() string {
 	return c.req.getQuerystring()
 }
 
-// 获取请求的hostname
+// GetHostname 获取请求的hostname
 func (c *Context) GetHostname() string {
 	return c.req.getHostname()
 }
 
-// 获取请求的内容长度
+// GetLength 获取请求的内容长度
 func (c *Context) GetLength() int {
 	return c.req.getLength()
 }
 
-// 获取请求的ua
+// GetUserAgent 获取请求的ua
 func (c *Context) GetUserAgent() string {
 	return c.req.getUserAgent()
 }
 
-// 获取请求的客户端的IP
+// GetClientIp 获取请求的客户端的IP
 func (c *Context) GetClientIp() string {
 	return c.req.getClientIp()
 }
 
-// 获取返回的http状态码
-func (c *Context) GetStatusCode() int {
-	return c.res.getStatusCode()
-}
-
-// 设置返回的头信息
+// SetHeader 设置返回的头信息
 func (c *Context) SetHeader(key, value string) *Context {
 	c.res.setHeader(key, value)
 	return c
 }
 
-// 设置返回的http状态码
+// SetStatus 设置返回的http状态码
 func (c *Context) SetStatus(code int) *Context {
+	c.statusCode = code
 	c.res.setStatus(code)
 	return c
 }
 
-// 设置返回体的长度
+// SetLength 设置返回体的长度
 func (c *Context) SetLength(length int) *Context {
 	c.res.setLength(length)
 	return c
 }
 
-// 设置返回的重定向地址
+// Redirect 设置返回的重定向地址
 func (c *Context) Redirect(url string, code int) {
 	c.res.redirect(url, code)
 }
 
-// 下载文件
+// Download 下载文件
 func (c *Context) Download(filePath string) {
 	c.res.download(filePath)
 }
 
-// 返回json数据
+// Res ResponseWriterAdapter返回自定义数据
+func (c *Context) Res(res ResponseWriterAdapter) {
+	d, err := res.Data()
+	if err != nil {
+		panic(err)
+	}
+	res.SetHeader(c)
+	c.res.raw(d)
+}
+
+// Json 返回json数据
 func (c *Context) Json(data map[string]interface{}) {
-	c.res.json(data)
+	jw := &jsonWriter{
+		data: data,
+	}
+	c.Res(jw)
 }
 
-// 返回文本数据
-func (c *Context) Body(body string) {
-	c.res.text(body)
-}
-
-// 返回html数据
-func (c *Context) Html(html string) {
-	c.res.html(html)
-}
-
-// 返回buffer数据
-func (c *Context) Buffer(buffer []byte) {
-	c.res.raw(buffer)
-}
-
-// 获取app对象
+// GetApp 获取app对象
 func (c *Context) GetApp() *Application {
 	return c.app
 }

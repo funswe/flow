@@ -10,15 +10,23 @@ import (
 	"github.com/funswe/flow/utils/json"
 )
 
-// 定义继承原生response结构
-type rwresponse struct {
-	http.ResponseWriter     // 继承原生的http response对象
-	statusCode          int // http状态码
+type ResponseWriterAdapter interface {
+	SetHeader(c *Context)
+	Data() ([]byte, error)
 }
 
-func (w *rwresponse) WriteHeader(statusCode int) {
-	w.statusCode = statusCode
-	w.ResponseWriter.WriteHeader(statusCode)
+// jsonWriter 返回json数据
+type jsonWriter struct {
+	data map[string]interface{}
+}
+
+func (j *jsonWriter) SetHeader(c *Context) {
+	c.SetHeader(HttpHeaderContentType, "application/json; charset=utf-8")
+}
+
+func (j *jsonWriter) Data() ([]byte, error) {
+	body, err := json.Marshal(j.data)
+	return body, err
 }
 
 // 定义封装的response结构
@@ -28,7 +36,6 @@ type response struct {
 	app *Application
 }
 
-// 返回封装的response对象
 func newResponse(res http.ResponseWriter, req *request, app *Application) *response {
 	return &response{res: res, req: req, app: app}
 }
@@ -61,15 +68,6 @@ func (r *response) setLength(length int) *response {
 	return r
 }
 
-// 获取http状态码
-func (r *response) getStatusCode() int {
-	b, ok := r.res.(*rwresponse)
-	if ok {
-		return b.statusCode
-	}
-	return 200
-}
-
 // 设置重定向地址
 func (r *response) redirect(url string, code int) {
 	http.Redirect(r.res, r.req.req, url, code)
@@ -93,38 +91,10 @@ func (r *response) download(filePath string) {
 	http.ServeFile(r.res, r.req.req, filePath)
 }
 
-// 返回JSON数据
-func (r *response) json(data map[string]interface{}) {
-	body, _ := json.Marshal(data)
-	r.setHeader(HttpHeaderContentType, "application/json; charset=utf-8")
-	r.raw(body)
-}
-
-// 返回文本数据
-func (r *response) text(data string) {
-	r.setHeader(HttpHeaderContentType, "text/plain; charset=utf-8")
-	r.raw([]byte(data))
-}
-
-// 返回html数据
-func (r *response) html(data string) {
-	r.setHeader(HttpHeaderContentType, "text/html; charset=utf-8")
-	r.raw([]byte(data))
-}
-
 func (r *response) raw(data []byte) {
-	//etag := fmt.Sprintf("%x", sha1.Sum(data))
-	//r.setHeader(HttpHeaderEtag, etag)
-	if r.req.isFresh(r) {
-		r.setStatus(304)
-	}
-	if r.getStatusCode() == 204 || r.getStatusCode() == 304 {
-		r.res.Header().Del(HttpHeaderContentType)
-		r.res.Header().Del(HttpHeaderContentLength)
-		r.res.Header().Del(HttpHeaderTransferEncoding)
-		data = []byte{}
-	}
 	if r.req.getMethod() != HttpMethodHead {
 		r.res.Write(data)
+	} else {
+		r.res.Write([]byte{})
 	}
 }

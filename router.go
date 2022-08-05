@@ -51,8 +51,7 @@ func dispatch(ctx *Context, index int, handler Handler, rg *RouterGroup) Next {
 
 func handle(handler Handler, rg *RouterGroup) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-		rwr := rwresponse{w, 200}
-		ctx := newContext(&rwr, r, params, <-app.rc, app)
+		ctx := newContext(w, r, params, <-app.rc, app)
 		dispatch(ctx, 0, handler, rg)()
 	}
 }
@@ -66,7 +65,7 @@ func GetRouterGroup() *RouterGroup {
 		ctx.Logger.Infof("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
 		next()
 		cost := time.Since(start)
-		ctx.Logger.Infof("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.GetStatusCode())
+		ctx.Logger.Infof("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.statusCode)
 	}, func(ctx *Context, next Next) {
 		ctx.SetHeader(HttpHeaderXPoweredBy, "flow")
 		// 添加跨域支持

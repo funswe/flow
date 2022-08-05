@@ -5,10 +5,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // 定义封装的request结构
@@ -117,51 +115,6 @@ func (r *request) getLength() (l int) {
 	}
 	l, _ = strconv.Atoi(length)
 	return
-}
-
-func (r *request) isFresh(res *response) bool {
-	method := r.getMethod()
-	statusCode := res.getStatusCode()
-	if method != HttpMethodGet && method != HttpMethodHead {
-		return false
-	}
-	if (statusCode >= 200 && statusCode < 300) || statusCode == 304 {
-		modifiedSince := r.getHeader(HttpHeaderIfModifiedSince)
-		noneMatch := r.getHeader(HttpHeaderIfNoneMatch)
-		if len(modifiedSince) == 0 && len(noneMatch) == 0 {
-			return false
-		}
-		cacheControl := r.getHeader(HttpHeaderCacheControl)
-		matched, _ := regexp.Match("(?:^|,)\\s*?no-cache\\s*?(?:,|$)", []byte(cacheControl))
-		if len(cacheControl) > 0 && matched {
-			return false
-		}
-		if len(noneMatch) > 0 && noneMatch != "*" {
-			etag := res.getHeader(HttpHeaderEtag)
-			if len(etag) == 0 {
-				return false
-			}
-		}
-		if len(modifiedSince) > 0 {
-			lastModified := res.getHeader(HttpHeaderLastModified)
-			if len(lastModified) == 0 {
-				return false
-			}
-			lastModifiedTime, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", lastModified)
-			if err != nil {
-				return false
-			}
-			modifiedSinceTime, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", modifiedSince)
-			if err != nil {
-				return false
-			}
-			if lastModifiedTime.After(modifiedSinceTime) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 // 获取请求的UA
