@@ -54,6 +54,14 @@ type Context struct {
 	Jwt        *Jwt                   // JWT操作对象，引用app的jwt对象
 }
 
+// NewAnonymousContext 返回一个匿名context对象
+func NewAnonymousContext(app *Application) *Context {
+	ctxLogger := logFactory.Create(map[string]interface{}{
+		"anonymous": true,
+	})
+	return &Context{Logger: ctxLogger, app: app, Orm: app.Orm, Redis: app.Redis, Curl: app.Curl, Jwt: app.Jwt}
+}
+
 // 返回一个新的context对象
 func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64, app *Application) *Context {
 	// 封装请求的request对象
