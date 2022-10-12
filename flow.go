@@ -175,6 +175,9 @@ func Run() error {
 func ExecuteTask(task Task) {
 	c := make(chan *TaskResult)
 	go func() {
+		if task.GetDelay() > 0 {
+			<-time.After(task.GetDelay())
+		}
 		task.BeforeExecute(app)
 		c <- task.Execute(app)
 	}()

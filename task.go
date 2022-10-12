@@ -15,6 +15,7 @@ type Task interface {
 	Timeout(app *Application)
 	GetTimeout() time.Duration
 	IsTimeout() bool
+	GetDelay() time.Duration
 }
 
 type AsyncTask interface {
