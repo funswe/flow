@@ -1,6 +1,8 @@
 package flow
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/funswe/flow/log"
@@ -16,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const defaultMultipartMemory = 32 << 20 // 32 MB
@@ -100,9 +103,14 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 			}
 		}
 	}
+	h := md5.New()
+	h.Write([]byte(fmt.Sprintf("request-%d-%d", req.id, time.Now().Nanosecond())))
+	suffix := hex.EncodeToString(h.Sum(nil))
+	logId := fmt.Sprintf("%s%s", time.Now().Format("20060102150405"), strings.ToUpper(suffix))
 	// 定义上下文的logger对象，打印的时候带上请求的ID和ua
 	ctxLogger := logFactory.Create(map[string]interface{}{
 		"reqId": req.id,
+		"logId": logId,
 		"ua":    req.getUserAgent(),
 	})
 	return &Context{req: req, res: res, params: mapParams, rawBody: rawBody, rawBodyErr: err, Logger: ctxLogger, app: app, Orm: app.Orm, Redis: app.Redis, Curl: app.Curl, Jwt: app.Jwt}

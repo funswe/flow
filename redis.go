@@ -12,7 +12,7 @@ import (
 
 var ctx = context.Background()
 
-// 定义redis配置结构
+// RedisConfig 定义redis配置结构
 type RedisConfig struct {
 	Enable   bool
 	Password string
@@ -33,33 +33,38 @@ func defRedisConfig() *RedisConfig {
 	}
 }
 
-const Nil = NotExistError("flow-redis: key not exist")
+func NewNil(key string) error {
+	return NotExistError{
+		key: key,
+	}
+}
 
-// 定义redis键不存在错误对象
-type NotExistError string
+// NotExistError 定义redis键不存在错误对象
+type NotExistError struct {
+	key string
+}
 
-func (e NotExistError) Error() string { return string(e) }
+func (e NotExistError) Error() string {
+	return fmt.Sprintf("%s: key not exist", e.key)
+}
 
-func (NotExistError) NotExistError() {}
-
-// 定义返回的结果
+// RedisResult 定义返回的结果
 type RedisResult string
 
-// 将返回的结果定义到给定的对象里
+// Parse 将返回的结果定义到给定的对象里
 func (rr RedisResult) Parse(v interface{}) error {
 	return json.Unmarshal([]byte(string(rr)), v)
 }
 
-// 返回原始的请求字符串结果数据
+// Raw 返回原始的请求字符串结果数据
 func (rr RedisResult) Raw() string {
 	return string(rr)
 }
 
-// 定义redis操作对象
+// RedisClient 定义redis操作对象
 type RedisClient struct {
-	app      *Application
-	NotExist NotExistError
-	rdb      *redis.Client
+	app *Application
+	rdb *redis.Client
 }
 
 func (rd *RedisClient) fillKey(key string) string {
@@ -77,7 +82,7 @@ func (rd *RedisClient) Get(key string) (RedisResult, error) {
 	val, err := rd.rdb.Get(ctx, rd.fillKey(key)).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return "", Nil
+			return "", NewNil(rd.fillKey(key))
 		}
 		return "", err
 	}
@@ -107,7 +112,7 @@ func (rd *RedisClient) GetWithOutPrefix(key string) (RedisResult, error) {
 	val, err := rd.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return "", Nil
+			return "", NewNil(rd.fillKey(key))
 		}
 		return "", err
 	}
@@ -133,11 +138,14 @@ func (rd *RedisClient) DeleteWithOutPrefix(key string) error {
 	return rd.rdb.Del(ctx, key).Err()
 }
 
+func (rd *RedisClient) IsNil(err error) bool {
+	_, ok := err.(error)
+	return ok
+}
+
 // 返回默认的redis操作对象
 func defRedis() *RedisClient {
-	return &RedisClient{
-		NotExist: Nil,
-	}
+	return &RedisClient{}
 }
 
 // 初始化redis
