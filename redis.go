@@ -139,7 +139,7 @@ func (rd *RedisClient) DeleteWithOutPrefix(key string) error {
 }
 
 func (rd *RedisClient) IsNil(err error) bool {
-	_, ok := err.(error)
+	_, ok := err.(NotExistError)
 	return ok
 }
 
