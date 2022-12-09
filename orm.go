@@ -86,6 +86,11 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 	} else {
 		db.Select(selectFields)
 	}
+	if len(q.Model.Alias()) > 0 {
+		db.Order(fmt.Sprintf("`%s`.`id`", q.Model.Alias()))
+	} else {
+		db.Order(fmt.Sprintf("`%s`.`id`", q.Model.TableName()))
+	}
 	if err := db.First(&result).Error; err != nil {
 		return nil, err
 	}
