@@ -100,9 +100,6 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, relations []Relation, selectFields []string) {
 	if len(relations) > 0 {
 		for _, v := range relations {
-			if len(v.Relations) > 0 {
-				q.handleRelations(db, v.Relations, selectFields)
-			}
 			var build strings.Builder
 			if v.Required {
 				build.WriteString("INNER JOIN ")
@@ -121,6 +118,9 @@ func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, relations []Relation, sel
 				selectFields = append(selectFields, q.GetJoinSelectFields(v.Model, v.As)...)
 			} else {
 				selectFields = append(selectFields, v.Fields...)
+			}
+			if len(v.Relations) > 0 {
+				q.handleRelations(db, v.Relations, selectFields)
 			}
 		}
 	}
