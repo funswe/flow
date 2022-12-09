@@ -42,10 +42,10 @@ type Relation struct {
 	ON        []string   // ON条件
 	Fields    []string   // 查询的字段
 	Relations []Relation // 关联
+	GroupBy   string
 }
 
 type Model interface {
-	Relation()
 	TableName() string
 	Alias() string
 }
@@ -58,6 +58,7 @@ type QueryBuilder[T Model] struct {
 	OrderBy    string
 	Limit      clause.Limit
 	Relations  []Relation
+	GroupBy    string
 }
 
 func (q *QueryBuilder[T]) FindOne() (*T, error) {
@@ -86,10 +87,17 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 	} else {
 		db.Select(selectFields)
 	}
-	if len(q.Model.Alias()) > 0 {
-		db.Order(fmt.Sprintf("`%s`.`id`", q.Model.Alias()))
+	if len(q.OrderBy) > 0 {
+		db.Order(q.OrderBy)
 	} else {
-		db.Order(fmt.Sprintf("`%s`.`id`", q.Model.TableName()))
+		if len(q.Model.Alias()) > 0 {
+			db.Order(fmt.Sprintf("`%s`.`id`", q.Model.Alias()))
+		} else {
+			db.Order(fmt.Sprintf("`%s`.`id`", q.Model.TableName()))
+		}
+	}
+	if len(q.GroupBy) > 0 {
+		db.Group(q.OrderBy)
 	}
 	if err := db.Take(&result).Error; err != nil {
 		return nil, err
@@ -128,6 +136,9 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	}
 	if len(q.OrderBy) > 0 {
 		db.Order(q.OrderBy)
+	}
+	if len(q.GroupBy) > 0 {
+		db.Group(q.OrderBy)
 	}
 	if q.Limit.Offset > 0 {
 		db.Offset(q.Limit.Offset)
