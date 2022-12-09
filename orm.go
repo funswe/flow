@@ -97,7 +97,7 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 		}
 	}
 	if len(q.GroupBy) > 0 {
-		db.Group(q.OrderBy)
+		db.Group(q.GroupBy)
 	}
 	if err := db.Take(&result).Error; err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 		db.Order(q.OrderBy)
 	}
 	if len(q.GroupBy) > 0 {
-		db.Group(q.OrderBy)
+		db.Group(q.GroupBy)
 	}
 	if q.Limit.Offset > 0 {
 		db.Offset(q.Limit.Offset)
