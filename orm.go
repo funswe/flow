@@ -97,6 +97,50 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 	return &result, nil
 }
 
+func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
+	if q.BD == nil {
+		panic(errors.New("no db server available"))
+	}
+	tableName := q.Model.TableName()
+	if len(q.Model.Alias()) > 0 {
+		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.Alias())
+	}
+	db := q.BD.Table(tableName)
+	where := q.fillConditions(q.Conditions)
+	for _, v := range where {
+		db.Where(v["key"], v["val"])
+	}
+	selectFields := make([]string, 0)
+	if len(q.Fields) == 0 {
+		selectFields = append(selectFields, q.GetSelectFields(q.Model)...)
+	}
+	q.handleRelations(db, q.Relations, &selectFields)
+	var total int64
+	err := db.Count(&total).Error
+	if err != nil {
+		return 0, nil, err
+	}
+	var result []T
+	if len(q.Fields) > 0 {
+		db.Select(q.Fields)
+	} else {
+		db.Select(selectFields)
+	}
+	if len(q.OrderBy) > 0 {
+		db.Order(q.OrderBy)
+	}
+	if q.Limit.Offset > 0 {
+		db.Offset(q.Limit.Offset)
+	}
+	if q.Limit.Limit > 0 {
+		db.Limit(q.Limit.Limit)
+	}
+	if err := db.Find(&result).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, &result, nil
+}
+
 func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, relations []Relation, selectFields *[]string) {
 	if len(relations) > 0 {
 		for _, v := range relations {
@@ -124,70 +168,6 @@ func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, relations []Relation, sel
 			}
 		}
 	}
-}
-
-func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
-	if q.BD == nil {
-		panic(errors.New("no db server available"))
-	}
-	tableName := q.Model.TableName()
-	if len(q.Model.Alias()) > 0 {
-		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.Alias())
-	}
-	db := q.BD.Table(tableName)
-	where := q.fillConditions(q.Conditions)
-	for _, v := range where {
-		db.Where(v["key"], v["val"])
-	}
-	selectFields := make([]string, 0)
-	if len(q.Fields) == 0 {
-		selectFields = append(selectFields, q.GetSelectFields(q.Model)...)
-	}
-	if len(q.Relations) > 0 {
-		for _, v := range q.Relations {
-			var build strings.Builder
-			if v.Required {
-				build.WriteString("INNER JOIN ")
-			} else {
-				build.WriteString("LEFT JOIN ")
-			}
-			build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
-			if len(v.Model.Alias()) > 0 {
-				build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
-			}
-			if len(v.ON) > 0 {
-				build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
-			}
-			db.Joins(build.String(), v.ON[1:])
-			if len(q.Fields) == 0 && len(v.Fields) == 0 {
-				selectFields = append(selectFields, q.GetJoinSelectFields(v.Model, v.As)...)
-			}
-		}
-	}
-	var total int64
-	err := db.Count(&total).Error
-	if err != nil {
-		return 0, nil, err
-	}
-	var result []T
-	if len(q.Fields) > 0 {
-		db.Select(q.Fields)
-	} else {
-		db.Select(selectFields)
-	}
-	if len(q.OrderBy) > 0 {
-		db.Order(q.OrderBy)
-	}
-	if q.Limit.Offset > 0 {
-		db.Offset(q.Limit.Offset)
-	}
-	if q.Limit.Limit > 0 {
-		db.Limit(q.Limit.Limit)
-	}
-	if err := db.Find(&result).Error; err != nil {
-		return 0, nil, err
-	}
-	return total, &result, nil
 }
 
 func (q *QueryBuilder[T]) fillConditions(conditions []map[string]interface{}) []map[string]interface{} {
