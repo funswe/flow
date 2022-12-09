@@ -143,6 +143,9 @@ func (q *QueryBuilder[T]) getSelectFields(model Model) []string {
 		if _, ok := v.TagSettings["NOSELECT"]; ok {
 			continue
 		}
+		if _, ok := v.TagSettings["-"]; ok {
+			continue
+		}
 		result = append(result, fmt.Sprintf("`%s`.`%s`", model.Alias(), v.DBName))
 	}
 	return result
@@ -153,6 +156,9 @@ func (q *QueryBuilder[T]) getJoinSelectFields(model Model, as string) []string {
 	schema, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
 	for _, v := range schema.Fields {
 		if _, ok := v.TagSettings["NOSELECT"]; ok {
+			continue
+		}
+		if _, ok := v.TagSettings["-"]; ok {
 			continue
 		}
 		result = append(result, fmt.Sprintf("`%s`.`%s` AS `%s__%s`", model.Alias(), v.DBName, as, v.DBName))
