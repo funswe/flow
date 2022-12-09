@@ -59,11 +59,15 @@ type QueryBuilder[T Model] struct {
 	Relations  []Relation
 }
 
-func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
+func (q *QueryBuilder[T]) Query() (int64, *[]*T, error) {
 	if q.BD == nil {
 		panic(errors.New("no db server available"))
 	}
-	db := q.BD.Table(q.Model.Alias())
+	tableName := q.Model.TableName()
+	if len(q.Model.Alias()) > 0 {
+		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.Alias())
+	}
+	db := q.BD.Table(tableName)
 	where := q.fillConditions(q.Conditions)
 	for _, v := range where {
 		db.Where(v["key"], v["val"])
@@ -98,7 +102,7 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	var result []T
+	var result []*T
 	if len(q.Fields) > 0 {
 		db.Select(q.Fields)
 	} else {
