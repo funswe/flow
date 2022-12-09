@@ -36,11 +36,12 @@ type OrmPool struct {
 }
 
 type Relation struct {
-	Model    Model    // 关联的模型
-	As       string   // 主表里字段的field name
-	Required bool     // true表示INNER JOIN false是LEFT JOIN
-	ON       []string // ON条件
-	Fields   []string // 查询的字段
+	Model     Model      // 关联的模型
+	As        string     // 主表里字段的field name
+	Required  bool       // true表示INNER JOIN false是LEFT JOIN
+	ON        []string   // ON条件
+	Fields    []string   // 查询的字段
+	Relations []Relation // 关联
 }
 
 type Model interface {
@@ -59,6 +60,67 @@ type QueryBuilder[T Model] struct {
 	Relations  []Relation
 }
 
+func (q *QueryBuilder[T]) FindOne() (*T, error) {
+	if q.BD == nil {
+		panic(errors.New("no db server available"))
+	}
+	tableName := q.Model.TableName()
+	if len(q.Model.Alias()) > 0 {
+		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.Alias())
+	}
+	db := q.BD.Table(tableName)
+	where := q.fillConditions(q.Conditions)
+	for _, v := range where {
+		db.Where(v["key"], v["val"])
+	}
+	selectFields := make([]string, 0)
+	if len(q.Fields) == 0 {
+		selectFields = append(selectFields, q.GetSelectFields(q.Model)...)
+	} else {
+		selectFields = append(selectFields, q.Fields...)
+	}
+	q.handleRelations(db, q.Relations, selectFields)
+	var result T
+	if len(q.Fields) > 0 {
+		db.Select(q.Fields)
+	} else {
+		db.Select(selectFields)
+	}
+	if err := db.First(&result).Error; err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, relations []Relation, selectFields []string) {
+	if len(relations) > 0 {
+		for _, v := range relations {
+			if len(v.Relations) > 0 {
+				q.handleRelations(db, v.Relations, selectFields)
+			}
+			var build strings.Builder
+			if v.Required {
+				build.WriteString("INNER JOIN ")
+			} else {
+				build.WriteString("LEFT JOIN ")
+			}
+			build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
+			if len(v.Model.Alias()) > 0 {
+				build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
+			}
+			if len(v.ON) > 0 {
+				build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
+			}
+			db.Joins(build.String(), v.ON[1:])
+			if len(v.Fields) == 0 {
+				selectFields = append(selectFields, q.GetJoinSelectFields(v.Model, v.As)...)
+			} else {
+				selectFields = append(selectFields, v.Fields...)
+			}
+		}
+	}
+}
+
 func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	if q.BD == nil {
 		panic(errors.New("no db server available"))
@@ -74,7 +136,7 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	}
 	selectFields := make([]string, 0)
 	if len(q.Fields) == 0 {
-		selectFields = append(selectFields, q.getSelectFields(q.Model)...)
+		selectFields = append(selectFields, q.GetSelectFields(q.Model)...)
 	}
 	if len(q.Relations) > 0 {
 		for _, v := range q.Relations {
@@ -93,7 +155,7 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 			}
 			db.Joins(build.String(), v.ON[1:])
 			if len(q.Fields) == 0 && len(v.Fields) == 0 {
-				selectFields = append(selectFields, q.getJoinSelectFields(v.Model, v.As)...)
+				selectFields = append(selectFields, q.GetJoinSelectFields(v.Model, v.As)...)
 			}
 		}
 	}
@@ -140,7 +202,7 @@ func (q *QueryBuilder[T]) fillConditions(conditions []map[string]interface{}) []
 	return result
 }
 
-func (q *QueryBuilder[T]) getSelectFields(model Model) []string {
+func (q *QueryBuilder[T]) GetSelectFields(model Model) []string {
 	result := make([]string, 0)
 	schema, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
 	for _, v := range schema.Fields {
@@ -155,7 +217,7 @@ func (q *QueryBuilder[T]) getSelectFields(model Model) []string {
 	return result
 }
 
-func (q *QueryBuilder[T]) getJoinSelectFields(model Model, as string) []string {
+func (q *QueryBuilder[T]) GetJoinSelectFields(model Model, as string) []string {
 	result := make([]string, 0)
 	schema, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
 	for _, v := range schema.Fields {
