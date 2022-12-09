@@ -56,7 +56,7 @@ type QueryBuilder[T Model] struct {
 	Conditions []map[string]interface{}
 	Fields     []string
 	OrderBy    string
-	Limit      *clause.Limit
+	Limit      clause.Limit
 	Relations  []Relation
 }
 
