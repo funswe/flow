@@ -85,8 +85,8 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 				build.WriteString("LEFT JOIN ")
 			}
 			build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
-			if len(v.As) > 0 {
-				build.WriteString(fmt.Sprintf("`%s` ", v.As))
+			if len(v.Model.Alias()) > 0 {
+				build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
 			}
 			if len(v.ON) > 0 {
 				build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
