@@ -59,7 +59,7 @@ type QueryBuilder[T Model] struct {
 	Relations  []Relation
 }
 
-func (q *QueryBuilder[T]) Query() (int64, *[]*T, error) {
+func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	if q.BD == nil {
 		panic(errors.New("no db server available"))
 	}
@@ -102,7 +102,7 @@ func (q *QueryBuilder[T]) Query() (int64, *[]*T, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	var result []*T
+	var result []T
 	if len(q.Fields) > 0 {
 		db.Select(q.Fields)
 	} else {
