@@ -79,7 +79,7 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 	} else {
 		selectFields = append(selectFields, q.Fields...)
 	}
-	q.handleRelations(db, q.Relations, selectFields)
+	q.handleRelations(db, q.Relations, &selectFields)
 	var result T
 	if len(q.Fields) > 0 {
 		db.Select(q.Fields)
@@ -91,13 +91,13 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 	} else {
 		db.Order(fmt.Sprintf("`%s`.`id`", q.Model.TableName()))
 	}
-	if err := db.First(&result).Error; err != nil {
+	if err := db.Take(&result).Error; err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, relations []Relation, selectFields []string) {
+func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, relations []Relation, selectFields *[]string) {
 	if len(relations) > 0 {
 		for _, v := range relations {
 			var build strings.Builder
@@ -115,9 +115,9 @@ func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, relations []Relation, sel
 			}
 			db.Joins(build.String(), v.ON[1:])
 			if len(v.Fields) == 0 {
-				selectFields = append(selectFields, q.GetJoinSelectFields(v.Model, v.As)...)
+				*selectFields = append(*selectFields, q.GetJoinSelectFields(v.Model, v.As)...)
 			} else {
-				selectFields = append(selectFields, v.Fields...)
+				*selectFields = append(*selectFields, v.Fields...)
 			}
 			if len(v.Relations) > 0 {
 				q.handleRelations(db, v.Relations, selectFields)
