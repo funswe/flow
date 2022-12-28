@@ -284,7 +284,7 @@ func (l *dbLogger) Trace(ctx context.Context, begin time.Time, fc func() (string
 func defOrmLogger() *dbLogger {
 	return &dbLogger{
 		LogLevel: logger.Info,
-		logger:   log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+"_sql.log", "debug"),
+		logger:   log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+"_sql.log", "debug", app.loggerConfig.LoggerMaxAge),
 	}
 }
 
