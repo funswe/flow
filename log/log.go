@@ -18,18 +18,22 @@ type Logger struct {
 	*logrus.Entry
 }
 
-// 定义日志格式化
+// MyFormatter 定义日志格式化
 type MyFormatter struct {
 }
 
-func New(logPath, logFileName, loggerLevel string) *Logger {
+func New(logPath, logFileName, loggerLevel string, maxAge int64) *Logger {
 	if !files.PathExists(logPath) {
 		os.MkdirAll(logPath, os.ModePerm)
+	}
+	if maxAge == 0 {
+		maxAge = 30
 	}
 	baseLogPath := path.Join(logPath, logFileName)
 	writer, _ := rotatelogs.New(
 		baseLogPath+".%Y-%m-%d",
 		rotatelogs.WithLinkName(baseLogPath),
+		rotatelogs.WithMaxAge(time.Duration(maxAge)*24*time.Hour),
 	)
 	format := new(MyFormatter)
 	lfHook := lfshook.NewHook(lfshook.WriterMap{
@@ -56,7 +60,7 @@ func (l *Logger) Create(fields logrus.Fields) *Logger {
 	return &Logger{e}
 }
 
-// 定义日志格式
+// Format 定义日志格式
 func (f *MyFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var b *bytes.Buffer
 	if entry.Buffer != nil {

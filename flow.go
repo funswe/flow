@@ -64,12 +64,12 @@ var (
 	asyncTaskPool  = make(map[string]AsyncTask, 0)
 )
 
-// 添加中间件
+// Use 添加中间件
 func Use(m Middleware) {
 	defRouterGroup.Use(m)
 }
 
-// 设置服务配置
+// SetServerConfig 设置服务配置
 func SetServerConfig(serverConfig *ServerConfig) {
 	if serverConfig == nil {
 		serverConfig = defServerConfig()
@@ -77,7 +77,7 @@ func SetServerConfig(serverConfig *ServerConfig) {
 	app.setServerConfig(serverConfig)
 }
 
-// 设置日志配置
+// SetLoggerConfig 设置日志配置
 func SetLoggerConfig(loggerConfig *LoggerConfig) {
 	if loggerConfig == nil {
 		loggerConfig = defLoggerConfig()
@@ -85,7 +85,7 @@ func SetLoggerConfig(loggerConfig *LoggerConfig) {
 	app.setLoggerConfig(loggerConfig)
 }
 
-// 设置数据库配置
+// SetOrmConfig 设置数据库配置
 func SetOrmConfig(ormConfig *OrmConfig) {
 	if ormConfig == nil {
 		ormConfig = defOrmConfig()
@@ -96,7 +96,7 @@ func SetOrmConfig(ormConfig *OrmConfig) {
 	app.setOrmConfig(ormConfig)
 }
 
-// 设置redis配置
+// SetRedisConfig 设置redis配置
 func SetRedisConfig(redisConfig *RedisConfig) {
 	if redisConfig == nil {
 		redisConfig = defRedisConfig()
@@ -104,7 +104,7 @@ func SetRedisConfig(redisConfig *RedisConfig) {
 	app.setRedisConfig(redisConfig)
 }
 
-// 设置跨域配置
+// SetCorsConfig 设置跨域配置
 func SetCorsConfig(corsConfig *CorsConfig) {
 	if corsConfig == nil {
 		corsConfig = defCorsConfig()
@@ -118,7 +118,7 @@ func SetCorsConfig(corsConfig *CorsConfig) {
 	app.setCorsConfig(corsConfig)
 }
 
-// 设置httpclient配置
+// SetCurlConfig 设置httpclient配置
 func SetCurlConfig(curlConfig *CurlConfig) {
 	if curlConfig == nil {
 		curlConfig = defCurlConfig()
@@ -126,7 +126,7 @@ func SetCurlConfig(curlConfig *CurlConfig) {
 	app.setCurlConfig(curlConfig)
 }
 
-// 设置JWT配置
+// SetJwtConfig 设置JWT配置
 func SetJwtConfig(jwtConfig *JwtConfig) {
 	if jwtConfig == nil {
 		jwtConfig = defJwtConfig()
@@ -162,12 +162,12 @@ func ALL(path string, handler Handler) {
 	defRouterGroup.ALL(path, handler)
 }
 
-// 添加运行前需要执行的方法
+// AddBefore 添加运行前需要执行的方法
 func AddBefore(b BeforeRun) {
 	app.addBefore(b)
 }
 
-// 启动服务
+// Run 启动服务
 func Run() error {
 	return app.run()
 }

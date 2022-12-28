@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-// 定义服务配置
+// ServerConfig 定义服务配置
 type ServerConfig struct {
 	AppName    string // 应用名称
 	Proxy      bool   // 是否是代理模式
@@ -29,10 +29,11 @@ func defServerConfig() *ServerConfig {
 	}
 }
 
-// 定义日志配置
+// LoggerConfig 定义日志配置
 type LoggerConfig struct {
-	LoggerLevel string
-	LoggerPath  string
+	LoggerLevel  string
+	LoggerPath   string
+	LoggerMaxAge int64
 }
 
 type BeforeRun func(app *Application)
@@ -40,8 +41,9 @@ type BeforeRun func(app *Application)
 // 返回默认的日志配置
 func defLoggerConfig() *LoggerConfig {
 	return &LoggerConfig{
-		LoggerLevel: defLoggerLevel(),
-		LoggerPath:  defLoggerPath(),
+		LoggerLevel:  defLoggerLevel(),
+		LoggerPath:   defLoggerPath(),
+		LoggerMaxAge: defLoggerMaxAge(),
 	}
 }
 
@@ -75,7 +77,11 @@ func defLoggerLevel() string {
 	return "debug"
 }
 
-// 定义服务的APP
+func defLoggerMaxAge() int64 {
+	return 30
+}
+
+// Application 定义服务的APP
 type Application struct {
 	reqId        int64         // 请求ID，每次递增1，服务重启就从1开始计数
 	rc           chan int64    // 请求ID的传递channel
@@ -100,7 +106,7 @@ func (app *Application) run() error {
 		app.serverConfig.StaticPath = "statics"
 	}
 	router.ServeFiles("/files/*filepath", http.Dir(app.serverConfig.StaticPath))
-	logFactory = log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+".log", app.loggerConfig.LoggerLevel)
+	logFactory = log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+".log", app.loggerConfig.LoggerLevel, app.loggerConfig.LoggerMaxAge)
 	app.Logger = logFactory.Create(map[string]interface{}{
 		"appName":     app.serverConfig.AppName,
 		"proxy":       app.serverConfig.Proxy,
@@ -185,37 +191,37 @@ func (app *Application) addBefore(b BeforeRun) *Application {
 	return app
 }
 
-// 获取服务配置
+// GetServerConfig 获取服务配置
 func (app *Application) GetServerConfig() *ServerConfig {
 	return app.serverConfig
 }
 
-// 获取日志服务
+// GetLoggerConfig 获取日志服务
 func (app *Application) GetLoggerConfig() *LoggerConfig {
 	return app.loggerConfig
 }
 
-// 获取数据库配置
+// GetOrmConfig 获取数据库配置
 func (app *Application) GetOrmConfig() *OrmConfig {
 	return app.ormConfig
 }
 
-// 获取redis配置
+// GetRedisConfig 获取redis配置
 func (app *Application) GetRedisConfig() *RedisConfig {
 	return app.redisConfig
 }
 
-// 获取跨域服务
+// GetCorsConfig 获取跨域服务
 func (app *Application) GetCorsConfig() *CorsConfig {
 	return app.corsConfig
 }
 
-// 获取httpclient配置
+// GetCurlConfig 获取httpclient配置
 func (app *Application) GetCurlConfig() *CurlConfig {
 	return app.curlConfig
 }
 
-// 获取JWT配置
+// GetJwtConfig 获取JWT配置
 func (app *Application) GetJwtConfig() *JwtConfig {
 	return app.jwtConfig
 }
