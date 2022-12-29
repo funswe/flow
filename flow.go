@@ -62,6 +62,7 @@ var (
 	defRouterGroup = &RouterGroup{}
 	asyncTaskLock  = sync.RWMutex{}
 	asyncTaskPool  = make(map[string]AsyncTask, 0)
+	timerPool      = make(map[string]*timerJob, 0)
 )
 
 // Use 添加中间件
@@ -223,4 +224,50 @@ func ExecuteAsyncTask(task AsyncTask) {
 			task.Timeout(app)
 		}
 	}()
+}
+
+func StartTimer(timer Timer) {
+	// 如果不是立即执行，就延迟一个周期执行
+	if !timer.IsImmediately() {
+		<-time.After(timer.GetInterval())
+	}
+	// 如果是周期的
+	if timer.IsPeriodic() {
+		ticker := time.NewTicker(timer.GetInterval())
+		stopChan := make(chan bool, 0)
+		tJob := &timerJob{
+			stopChan: stopChan,
+			timer:    timer,
+		}
+		timerPool[timer.GetName()] = tJob
+		go func() {
+			defer func() {
+				ticker.Stop()
+				delete(timerPool, tJob.timer.GetName())
+			}()
+			for {
+				select {
+				case <-tJob.stopChan:
+					return
+				case <-ticker.C:
+					tJob.timer.Run(app)
+				}
+			}
+		}()
+	} else {
+		t := time.NewTimer(timer.GetInterval())
+		go func() {
+			<-t.C
+			timer.Run(app)
+		}()
+	}
+}
+
+func StopTimer(timerName string) {
+	if len(timerName) == 0 {
+		return
+	}
+	if v, ok := timerPool[timerName]; ok {
+		v.stopChan <- true
+	}
 }
