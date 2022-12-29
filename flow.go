@@ -227,12 +227,12 @@ func ExecuteAsyncTask(task AsyncTask) {
 }
 
 func StartTimer(timer Timer) {
-	// 如果不是立即执行，就延迟一个周期执行
-	if !timer.IsImmediately() {
-		<-time.After(timer.GetInterval())
-	}
 	// 如果是周期的
 	if timer.IsPeriodic() {
+		// 如果是立即执行
+		if timer.IsImmediately() {
+			timer.Run(app)
+		}
 		ticker := time.NewTicker(timer.GetInterval())
 		stopChan := make(chan bool, 0)
 		tJob := &timerJob{
