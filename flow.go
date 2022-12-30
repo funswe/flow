@@ -244,6 +244,7 @@ func StartTimer(timer Timer) {
 			defer func() {
 				ticker.Stop()
 				delete(timerPool, tJob.timer.GetName())
+				app.Logger.Infof("timer已停止，名称：%s", timer.GetName())
 			}()
 			for {
 				select {
@@ -261,6 +262,7 @@ func StartTimer(timer Timer) {
 			timer.Run(app)
 		}()
 	}
+	app.Logger.Infof("timer已启动，名称：%s", timer.GetName())
 }
 
 func StopTimer(timerName string) {
