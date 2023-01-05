@@ -340,10 +340,12 @@ func (q *QueryBuilder[T]) handleHasManyRelations(mainModel Model, relations []Re
 						selectFields = v.Fields
 					}
 					return func(db *gorm.DB) *gorm.DB {
+						db = db.Select(db.Statement.Selects, q.GetSelectFields(mainModel))
+						db = db.Select(db.Statement.Selects, selectFields)
 						if len(v.ON) > 1 {
-							return db.Select(db.Statement.Selects, selectFields).Joins(build.String())
+							return db.Joins(build.String(), v.ON[1:])
 						}
-						return db.Select(db.Statement.Selects, selectFields).Joins(build.String(), v.ON[1:])
+						return db.Joins(build.String())
 					}
 				}
 				return func(db *gorm.DB) *gorm.DB {
