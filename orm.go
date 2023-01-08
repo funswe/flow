@@ -52,7 +52,7 @@ type Model interface {
 
 type QueryBuilder[T Model] struct {
 	Model      T
-	BD         *gorm.DB
+	DB         *gorm.DB
 	Conditions []map[string]interface{}
 	Fields     []string
 	OrderBy    string
@@ -62,14 +62,14 @@ type QueryBuilder[T Model] struct {
 }
 
 func (q *QueryBuilder[T]) FindOne() (*T, error) {
-	if q.BD == nil {
+	if q.DB == nil {
 		panic(errors.New("no db server available"))
 	}
 	tableName := q.Model.TableName()
 	if len(q.Model.Alias()) > 0 {
 		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.Alias())
 	}
-	db := q.BD.Table(tableName)
+	db := q.DB.Table(tableName)
 	where := q.fillConditions(q.Conditions)
 	for _, v := range where {
 		db.Where(v["key"], v["val"])
@@ -80,7 +80,7 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 	} else {
 		selectFields = append(selectFields, q.Fields...)
 	}
-	q.handleRelations(db, q.Model, q.Relations)
+	db = q.handleRelations(db, q.Model, q.Relations)
 	var result T
 	if len(q.Fields) > 0 {
 		db.Select(db.Statement.Selects, q.Fields)
@@ -106,14 +106,14 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 }
 
 func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
-	if q.BD == nil {
+	if q.DB == nil {
 		panic(errors.New("no db server available"))
 	}
 	tableName := q.Model.TableName()
 	if len(q.Model.Alias()) > 0 {
 		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.Alias())
 	}
-	countDB := q.BD.Table(tableName)
+	countDB := q.DB.Table(tableName)
 	where := q.fillConditions(q.Conditions)
 	for _, v := range where {
 		countDB.Where(v["key"], v["val"])
@@ -124,7 +124,7 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	db := q.BD.Table(tableName)
+	db := q.DB.Table(tableName)
 	where = q.fillConditions(q.Conditions)
 	for _, v := range where {
 		db.Where(v["key"], v["val"])
