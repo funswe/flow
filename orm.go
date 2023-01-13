@@ -16,6 +16,8 @@ import (
 	"gorm.io/driver/mysql"
 )
 
+const NoSelect = "NOSELECT"
+
 // OrmConfig 定义数据库配置
 type OrmConfig struct {
 	Enable   bool
@@ -36,13 +38,24 @@ type OrmPool struct {
 }
 
 type Relation struct {
-	Model     Model      // 关联的模型
-	As        string     // 主表里字段的field name
-	Required  bool       // true表示INNER JOIN false是LEFT JOIN
-	ON        []string   // ON条件
-	Fields    []string   // 查询的字段
-	Relations []Relation // 关联
+	Model     Model         // 关联的模型
+	As        string        // 主表里字段的field name
+	Required  bool          // true表示INNER JOIN false是LEFT JOIN
+	ON        []string      // ON条件
+	Fields    []string      // 查询的字段
+	Relations []SubRelation // 关联
 	GroupBy   string
+	OrderBy   string
+}
+
+type SubRelation struct {
+	Model    Model    // 关联的模型
+	As       string   // 主表里字段的field name
+	Required bool     // true表示INNER JOIN false是LEFT JOIN
+	ON       []string // ON条件
+	Fields   []string // 查询的字段
+	GroupBy  string
+	OrderBy  string
 }
 
 type Model interface {
@@ -70,10 +83,7 @@ func (q *QueryBuilder[T]) FindOne() (*T, error) {
 		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.Alias())
 	}
 	db := q.DB.Table(tableName)
-	where := q.fillConditions(q.Conditions)
-	for _, v := range where {
-		db.Where(v["key"], v["val"])
-	}
+	db = q.fillConditions(db, q.Conditions)
 	selectFields := make([]string, 0)
 	if len(q.Fields) == 0 {
 		selectFields = append(selectFields, q.GetSelectFields(q.Model)...)
@@ -112,23 +122,19 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	tableName := q.Model.TableName()
 	if len(q.Model.Alias()) > 0 {
 		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.Alias())
+	} else {
+		tableName = fmt.Sprintf("`%s` `%s`", tableName, q.Model.TableName())
 	}
 	countDB := q.DB.Table(tableName)
-	where := q.fillConditions(q.Conditions)
-	for _, v := range where {
-		countDB.Where(v["key"], v["val"])
-	}
-	countDB = q.handleCountRelations(countDB, q.Model, q.Relations)
+	countDB = q.fillConditions(countDB, q.Conditions)
+	countDB = q.handleHasOneRelations(countDB, q.Model, q.Relations)
 	var total int64
 	err := countDB.Count(&total).Error
 	if err != nil {
 		return 0, nil, err
 	}
 	db := q.DB.Table(tableName)
-	where = q.fillConditions(q.Conditions)
-	for _, v := range where {
-		db.Where(v["key"], v["val"])
-	}
+	db = q.fillConditions(db, q.Conditions)
 	db = q.handleRelations(db, q.Model, q.Relations)
 	var result []T
 	if len(q.Fields) > 0 {
@@ -154,233 +160,62 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	return total, &result, nil
 }
 
-func (q *QueryBuilder[T]) handleCountRelations(db *gorm.DB, mainModel Model, relations []Relation) *gorm.DB {
-	if len(relations) > 0 {
-		for _, v := range relations {
-			var build strings.Builder
-			mainSchema, err := schema.Parse(mainModel, &sync.Map{}, schema.NamingStrategy{})
-			if err != nil {
-				continue
-			}
-			relation, ok := mainSchema.Relationships.Relations[v.As]
-			if !ok {
-				continue
-			}
-			if relation.Type == schema.HasOne {
-				if v.Required {
-					build.WriteString("INNER JOIN ")
-				} else {
-					build.WriteString("LEFT JOIN ")
-				}
-				build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
-				if len(v.Model.Alias()) > 0 {
-					build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
-				}
-				subSchema, err := schema.Parse(v.Model, &sync.Map{}, schema.NamingStrategy{})
-				if err != nil {
-					continue
-				}
-				foreignKey, ok1 := subSchema.FieldsByName[relation.Field.TagSettings["FOREIGNKEY"]]
-				referencesKey, ok2 := mainSchema.FieldsByName[relation.Field.TagSettings["REFERENCES"]]
-				var hasOn bool
-				if ok1 && ok2 {
-					foreignKeyName := foreignKey.DBName
-					referencesKeyName := referencesKey.DBName
-					if len(foreignKeyName) > 0 && len(referencesKeyName) > 0 {
-						build.WriteString(fmt.Sprintf("ON %s.%s = %s.%s ", mainModel.Alias(), referencesKeyName, v.Model.Alias(), foreignKeyName))
-						hasOn = true
-					}
-				}
-				if len(v.ON) > 0 {
-					if hasOn {
-						build.WriteString(fmt.Sprintf("AND %s ", v.ON[0]))
-					} else {
-						build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
-					}
-				}
-				if len(v.ON) > 1 {
-					db = db.Joins(build.String(), v.ON[1:])
-				} else {
-					db = db.Joins(build.String())
-				}
-				if len(v.Fields) == 0 {
-					db = db.Select(db.Statement.Selects, q.GetJoinSelectFields(v.Model, v.As))
-				} else {
-					db = db.Select(db.Statement.Selects, v.Fields)
-				}
-				if len(v.Relations) > 0 {
-					db = q.handleHasOneRelations(db, v.Model, v.Relations)
-				}
-			}
-		}
-	}
-	return db
-}
-
 func (q *QueryBuilder[T]) handleRelations(db *gorm.DB, mainModel Model, relations []Relation) *gorm.DB {
-	if len(relations) > 0 {
-		for _, v := range relations {
-			var build strings.Builder
-			mainSchema, err := schema.Parse(mainModel, &sync.Map{}, schema.NamingStrategy{})
-			if err != nil {
-				continue
-			}
-			relation, ok := mainSchema.Relationships.Relations[v.As]
-			if !ok {
-				continue
-			}
-			if relation.Type == schema.HasOne {
-				if v.Required {
-					build.WriteString("INNER JOIN ")
-				} else {
-					build.WriteString("LEFT JOIN ")
-				}
-				build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
-				if len(v.Model.Alias()) > 0 {
-					build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
-				}
-				subSchema, err := schema.Parse(v.Model, &sync.Map{}, schema.NamingStrategy{})
-				if err != nil {
-					continue
-				}
-				foreignKey, ok1 := subSchema.FieldsByName[relation.Field.TagSettings["FOREIGNKEY"]]
-				referencesKey, ok2 := mainSchema.FieldsByName[relation.Field.TagSettings["REFERENCES"]]
-				var hasOn bool
-				if ok1 && ok2 {
-					foreignKeyName := foreignKey.DBName
-					referencesKeyName := referencesKey.DBName
-					if len(foreignKeyName) > 0 && len(referencesKeyName) > 0 {
-						build.WriteString(fmt.Sprintf("ON %s.%s = %s.%s ", mainModel.Alias(), referencesKeyName, v.Model.Alias(), foreignKeyName))
-						hasOn = true
-					}
-				}
-				if len(v.ON) > 0 {
-					if hasOn {
-						build.WriteString(fmt.Sprintf("AND %s ", v.ON[0]))
-					} else {
-						build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
-					}
-				}
-				if len(v.ON) > 1 {
-					db = db.Joins(build.String(), v.ON[1:])
-				} else {
-					db = db.Joins(build.String())
-				}
-				if len(v.Fields) == 0 {
-					db = db.Select(db.Statement.Selects, q.GetJoinSelectFields(v.Model, v.As))
-				} else {
-					db = db.Select(db.Statement.Selects, v.Fields)
-				}
-				if len(v.Relations) > 0 {
-					db = q.handleHasOneRelations(db, v.Model, v.Relations)
-				}
-			} else if relation.Type == schema.HasMany {
-				hasManyDb := func(db *gorm.DB) *gorm.DB {
-					return db
-				}
-				if len(v.Relations) > 0 {
-					hasManyDb = q.handleHasManyRelations(v.Model, v.Relations)
-				}
-				db = db.Preload(v.As, hasManyDb)
-			}
+	for _, v := range relations {
+		mainSchema, err := schema.Parse(mainModel, &sync.Map{}, schema.NamingStrategy{})
+		if err != nil {
+			continue
 		}
-	}
-	return db
-}
-
-func (q *QueryBuilder[T]) handleHasManyRelations(mainModel Model, relations []Relation) func(db *gorm.DB) *gorm.DB {
-	if len(relations) > 0 {
-		for _, v := range relations {
-			mainSchema, err := schema.Parse(mainModel, &sync.Map{}, schema.NamingStrategy{})
-			if err != nil {
-				continue
+		relation, ok := mainSchema.Relationships.Relations[v.As]
+		if !ok {
+			continue
+		}
+		if relation.Type == schema.HasOne {
+			db, isHasOne := q.buildHasOneSql(db, mainModel, v)
+			if len(v.Relations) > 0 && isHasOne {
+				db = q.handleHasOneSubRelations(db, v.Model, v.Relations)
 			}
-			relation, ok := mainSchema.Relationships.Relations[v.As]
-			if !ok {
-				continue
-			}
-			if relation.Type == schema.HasOne {
-				if len(v.Relations) == 0 {
-					var build strings.Builder
-					if v.Required {
-						build.WriteString("INNER JOIN ")
+		} else if relation.Type == schema.HasMany {
+			hasManyFunc := func(db *gorm.DB) *gorm.DB {
+				if len(v.ON) > 0 {
+					if len(v.ON) > 1 {
+						db.Where(v.ON[0], v.ON[1:])
 					} else {
-						build.WriteString("LEFT JOIN ")
-					}
-					build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
-					if len(v.Model.Alias()) > 0 {
-						build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
-					}
-					subSchema, err := schema.Parse(v.Model, &sync.Map{}, schema.NamingStrategy{})
-					if err != nil {
-						continue
-					}
-					foreignKey, ok1 := subSchema.FieldsByName[relation.Field.TagSettings["FOREIGNKEY"]]
-					referencesKey, ok2 := mainSchema.FieldsByName[relation.Field.TagSettings["REFERENCES"]]
-					var hasOn bool
-					if ok1 && ok2 {
-						foreignKeyName := foreignKey.DBName
-						referencesKeyName := referencesKey.DBName
-						if len(foreignKeyName) > 0 && len(referencesKeyName) > 0 {
-							build.WriteString(fmt.Sprintf("ON %s.%s = %s.%s ", mainModel.Alias(), referencesKeyName, v.Model.Alias(), foreignKeyName))
-							hasOn = true
-						}
-					}
-					if len(v.ON) > 0 {
-						if hasOn {
-							build.WriteString(fmt.Sprintf("AND %s ", v.ON[0]))
-						} else {
-							build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
-						}
-					}
-					var selectFields []string
-					if len(v.Fields) == 0 {
-						selectFields = q.GetJoinSelectFields(v.Model, v.As)
-					} else {
-						selectFields = v.Fields
-					}
-					return func(db *gorm.DB) *gorm.DB {
-						db = db.Select(db.Statement.Selects, q.GetSelectFields(mainModel))
-						db = db.Select(db.Statement.Selects, selectFields)
-						if len(v.ON) > 1 {
-							return db.Joins(build.String(), v.ON[1:])
-						}
-						return db.Joins(build.String())
+						db.Where(v.ON[0])
 					}
 				}
-				return func(db *gorm.DB) *gorm.DB {
-					return q.handleHasOneRelations(db, v.Model, v.Relations)
+				if len(v.Fields) > 0 {
+					db.Select(db.Statement.Selects, v.Fields)
 				}
-			} else if relation.Type == schema.HasMany {
-				return func(db *gorm.DB) *gorm.DB {
-					return db.Preload(v.As)
+				if len(v.OrderBy) > 0 {
+					db.Order(v.OrderBy)
 				}
+				if len(v.GroupBy) > 0 {
+					db.Group(v.GroupBy)
+				}
+				return db
 			}
 			if len(v.Relations) > 0 {
-				return q.handleHasManyRelations(v.Model, v.Relations)
+				hasManyFunc = q.handleHasManyRelations(v)
 			}
+			db = db.Preload(v.As, hasManyFunc)
 		}
 	}
-	return func(db *gorm.DB) *gorm.DB {
-		return db
-	}
+	return db
 }
 
-func (q *QueryBuilder[T]) handleHasOneRelations(db *gorm.DB, mainModel Model, relations []Relation) *gorm.DB {
-	if len(relations) > 0 {
-		for _, v := range relations {
+func (q *QueryBuilder[T]) handleHasManyRelations(r Relation) func(db *gorm.DB) *gorm.DB {
+	for _, v := range r.Relations {
+		mainSchema, err := schema.Parse(r.Model, &sync.Map{}, schema.NamingStrategy{})
+		if err != nil {
+			continue
+		}
+		relation, ok := mainSchema.Relationships.Relations[v.As]
+		if !ok {
+			continue
+		}
+		if relation.Type == schema.HasOne {
 			var build strings.Builder
-			mainSchema, err := schema.Parse(mainModel, &sync.Map{}, schema.NamingStrategy{})
-			if err != nil {
-				continue
-			}
-			relation, ok := mainSchema.Relationships.Relations[v.As]
-			if !ok {
-				continue
-			}
-			if relation.Type != schema.HasOne {
-				continue
-			}
 			if v.Required {
 				build.WriteString("INNER JOIN ")
 			} else {
@@ -389,6 +224,8 @@ func (q *QueryBuilder[T]) handleHasOneRelations(db *gorm.DB, mainModel Model, re
 			build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
 			if len(v.Model.Alias()) > 0 {
 				build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
+			} else {
+				build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
 			}
 			subSchema, err := schema.Parse(v.Model, &sync.Map{}, schema.NamingStrategy{})
 			if err != nil {
@@ -401,7 +238,15 @@ func (q *QueryBuilder[T]) handleHasOneRelations(db *gorm.DB, mainModel Model, re
 				foreignKeyName := foreignKey.DBName
 				referencesKeyName := referencesKey.DBName
 				if len(foreignKeyName) > 0 && len(referencesKeyName) > 0 {
-					build.WriteString(fmt.Sprintf("ON %s.%s = %s.%s ", mainModel.Alias(), referencesKeyName, v.Model.Alias(), foreignKeyName))
+					mainAlias := r.Model.TableName()
+					if len(r.Model.Alias()) > 0 {
+						mainAlias = r.Model.Alias()
+					}
+					alias := v.Model.TableName()
+					if len(v.Model.Alias()) > 0 {
+						alias = v.Model.Alias()
+					}
+					build.WriteString(fmt.Sprintf("ON %s.%s = %s.%s ", mainAlias, referencesKeyName, alias, foreignKeyName))
 					hasOn = true
 				}
 			}
@@ -412,67 +257,269 @@ func (q *QueryBuilder[T]) handleHasOneRelations(db *gorm.DB, mainModel Model, re
 					build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
 				}
 			}
-			if len(v.ON) > 1 {
-				db = db.Joins(build.String(), v.ON[1:])
-			} else {
-				db = db.Joins(build.String())
-			}
+			var selectFields []string
 			if len(v.Fields) == 0 {
-				db = db.Select(db.Statement.Selects, q.GetJoinSelectFields(v.Model, v.As))
+				selectFields = q.GetHasOneJoinSelectFields(v.Model, v.As)
 			} else {
-				db = db.Select(db.Statement.Selects, v.Fields)
+				selectFields = v.Fields
 			}
-			if len(v.Relations) > 0 {
-				return q.handleHasOneRelations(db, v.Model, v.Relations)
+			return func(db *gorm.DB) *gorm.DB {
+				db = db.Select(db.Statement.Selects, q.GetSelectFields(r.Model))
+				db = db.Select(db.Statement.Selects, selectFields)
+				if len(v.ON) > 1 {
+					return db.Joins(build.String(), v.ON[1:])
+				}
+				return db.Joins(build.String())
 			}
+		}
+		return func(db *gorm.DB) *gorm.DB {
+			if len(r.ON) > 0 {
+				if len(r.ON) > 1 {
+					db.Where(r.ON[0], r.ON[1:])
+				} else {
+					db.Where(r.ON[0])
+				}
+			}
+			if len(r.Fields) > 0 {
+				db.Select(db.Statement.Selects, r.Fields)
+			}
+			if len(r.OrderBy) > 0 {
+				db.Order(r.OrderBy)
+			}
+			if len(r.GroupBy) > 0 {
+				db.Group(r.GroupBy)
+			}
+			subFunc := func(db *gorm.DB) *gorm.DB {
+				if len(v.ON) > 0 {
+					if len(v.ON) > 1 {
+						db.Where(v.ON[0], v.ON[1:])
+					} else {
+						db.Where(v.ON[0])
+					}
+				}
+				if len(v.Fields) > 0 {
+					db.Select(db.Statement.Selects, v.Fields)
+				}
+				if len(v.OrderBy) > 0 {
+					db.Order(v.OrderBy)
+				}
+				if len(v.GroupBy) > 0 {
+					db.Group(v.GroupBy)
+				}
+				return db
+			}
+			return db.Preload(v.As, subFunc)
+		}
+	}
+	return func(db *gorm.DB) *gorm.DB {
+		return db
+	}
+}
+
+func (q *QueryBuilder[T]) handleHasOneRelations(db *gorm.DB, mainModel Model, relations []Relation) *gorm.DB {
+	for _, v := range relations {
+		db, isHasOne := q.buildHasOneSql(db, mainModel, v)
+		if len(v.Relations) > 0 && isHasOne {
+			db = q.handleHasOneSubRelations(db, v.Model, v.Relations)
 		}
 	}
 	return db
 }
 
-func (q *QueryBuilder[T]) fillConditions(conditions []map[string]interface{}) []map[string]interface{} {
-	result := make([]map[string]interface{}, 0)
-	for _, v := range conditions {
-		r := make(map[string]interface{}, 0)
-		key := v["key"]
-		if !strings.Contains(key.(string), ".") {
-			key = fmt.Sprintf("%s.%s", q.Model.Alias(), key)
-		}
-		r["key"] = key
-		if _, ok := v["val"]; ok {
-			r["val"] = v["val"]
-		}
-		result = append(result, r)
+func (q *QueryBuilder[T]) handleHasOneSubRelations(db *gorm.DB, mainModel Model, relations []SubRelation) *gorm.DB {
+	for _, v := range relations {
+		db = q.buildHasOneSubSql(db, mainModel, v)
 	}
-	return result
+	return db
+}
+
+func (q *QueryBuilder[T]) buildHasOneSql(db *gorm.DB, mainModel Model, v Relation) (*gorm.DB, bool) {
+	var build strings.Builder
+	mainSchema, err := schema.Parse(mainModel, &sync.Map{}, schema.NamingStrategy{})
+	if err != nil {
+		return db, false
+	}
+	relation, ok := mainSchema.Relationships.Relations[v.As]
+	if !ok {
+		return db, false
+	}
+	if relation.Type != schema.HasOne {
+		return db, false
+	}
+	if v.Required {
+		build.WriteString("INNER JOIN ")
+	} else {
+		build.WriteString("LEFT JOIN ")
+	}
+	build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
+	if len(v.Model.Alias()) > 0 {
+		build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
+	} else {
+		build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
+	}
+	subSchema, err := schema.Parse(v.Model, &sync.Map{}, schema.NamingStrategy{})
+	if err != nil {
+		return db, false
+	}
+	foreignKey, ok1 := subSchema.FieldsByName[relation.Field.TagSettings["FOREIGNKEY"]]
+	referencesKey, ok2 := mainSchema.FieldsByName[relation.Field.TagSettings["REFERENCES"]]
+	var hasOn bool
+	if ok1 && ok2 {
+		foreignKeyName := foreignKey.DBName
+		referencesKeyName := referencesKey.DBName
+		if len(foreignKeyName) > 0 && len(referencesKeyName) > 0 {
+			mainAlias := mainModel.TableName()
+			if len(mainModel.Alias()) > 0 {
+				mainAlias = mainModel.Alias()
+			}
+			alias := v.Model.TableName()
+			if len(v.Model.Alias()) > 0 {
+				alias = v.Model.Alias()
+			}
+			build.WriteString(fmt.Sprintf("ON %s.%s = %s.%s ", mainAlias, referencesKeyName, alias, foreignKeyName))
+			hasOn = true
+		}
+	}
+	if len(v.ON) > 0 {
+		if hasOn {
+			build.WriteString(fmt.Sprintf("AND %s ", v.ON[0]))
+		} else {
+			build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
+		}
+	}
+	if len(v.ON) > 1 {
+		db = db.Joins(build.String(), v.ON[1:])
+	} else {
+		db = db.Joins(build.String())
+	}
+	if len(v.Fields) == 0 {
+		db = db.Select(db.Statement.Selects, q.GetHasOneJoinSelectFields(v.Model, v.As))
+	} else {
+		db = db.Select(db.Statement.Selects, v.Fields)
+	}
+	return db, true
+}
+
+func (q *QueryBuilder[T]) buildHasOneSubSql(db *gorm.DB, mainModel Model, v SubRelation) *gorm.DB {
+	var build strings.Builder
+	mainSchema, err := schema.Parse(mainModel, &sync.Map{}, schema.NamingStrategy{})
+	if err != nil {
+		return db
+	}
+	relation, ok := mainSchema.Relationships.Relations[v.As]
+	if !ok {
+		return db
+	}
+	if relation.Type != schema.HasOne {
+		return db
+	}
+	if v.Required {
+		build.WriteString("INNER JOIN ")
+	} else {
+		build.WriteString("LEFT JOIN ")
+	}
+	build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
+	if len(v.Model.Alias()) > 0 {
+		build.WriteString(fmt.Sprintf("`%s` ", v.Model.Alias()))
+	} else {
+		build.WriteString(fmt.Sprintf("`%s` ", v.Model.TableName()))
+	}
+	subSchema, err := schema.Parse(v.Model, &sync.Map{}, schema.NamingStrategy{})
+	if err != nil {
+		return db
+	}
+	foreignKey, ok1 := subSchema.FieldsByName[relation.Field.TagSettings["FOREIGNKEY"]]
+	referencesKey, ok2 := mainSchema.FieldsByName[relation.Field.TagSettings["REFERENCES"]]
+	var hasOn bool
+	if ok1 && ok2 {
+		foreignKeyName := foreignKey.DBName
+		referencesKeyName := referencesKey.DBName
+		if len(foreignKeyName) > 0 && len(referencesKeyName) > 0 {
+			mainAlias := mainModel.TableName()
+			if len(mainModel.Alias()) > 0 {
+				mainAlias = mainModel.Alias()
+			}
+			alias := v.Model.TableName()
+			if len(v.Model.Alias()) > 0 {
+				alias = v.Model.Alias()
+			}
+			build.WriteString(fmt.Sprintf("ON %s.%s = %s.%s ", mainAlias, referencesKeyName, alias, foreignKeyName))
+			hasOn = true
+		}
+	}
+	if len(v.ON) > 0 {
+		if hasOn {
+			build.WriteString(fmt.Sprintf("AND %s ", v.ON[0]))
+		} else {
+			build.WriteString(fmt.Sprintf("ON %s ", v.ON[0]))
+		}
+	}
+	if len(v.ON) > 1 {
+		db = db.Joins(build.String(), v.ON[1:])
+	} else {
+		db = db.Joins(build.String())
+	}
+	if len(v.Fields) == 0 {
+		db = db.Select(db.Statement.Selects, q.GetHasOneJoinSelectFields(v.Model, v.As))
+	} else {
+		db = db.Select(db.Statement.Selects, v.Fields)
+	}
+	return db
+}
+
+func (q *QueryBuilder[T]) fillConditions(db *gorm.DB, conditions []map[string]interface{}) *gorm.DB {
+	for _, v := range conditions {
+		key := v["key"]
+		alias := q.Model.TableName()
+		if len(q.Model.Alias()) > 0 {
+			alias = q.Model.Alias()
+		}
+		if !strings.Contains(key.(string), ".") {
+			key = fmt.Sprintf("%s.%s", alias, key)
+		}
+		if _, ok := v["val"]; ok {
+			db.Where(key, v["val"])
+		} else {
+			db.Where(key)
+		}
+	}
+	return db
 }
 
 func (q *QueryBuilder[T]) GetSelectFields(model Model) []string {
 	result := make([]string, 0)
 	schema, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
 	for _, v := range schema.Fields {
-		if _, ok := v.TagSettings["NOSELECT"]; ok {
+		if _, ok := v.TagSettings[NoSelect]; ok {
 			continue
 		}
 		if _, ok := v.TagSettings["-"]; ok {
 			continue
 		}
-		result = append(result, fmt.Sprintf("`%s`.`%s`", model.Alias(), v.DBName))
+		alias := model.TableName()
+		if len(model.Alias()) > 0 {
+			alias = model.Alias()
+		}
+		result = append(result, fmt.Sprintf("`%s`.`%s`", alias, v.DBName))
 	}
 	return result
 }
 
-func (q *QueryBuilder[T]) GetJoinSelectFields(model Model, as string) []string {
+func (q *QueryBuilder[T]) GetHasOneJoinSelectFields(model Model, as string) []string {
 	result := make([]string, 0)
 	schema, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
 	for _, v := range schema.Fields {
-		if _, ok := v.TagSettings["NOSELECT"]; ok {
+		if _, ok := v.TagSettings[NoSelect]; ok {
 			continue
 		}
 		if _, ok := v.TagSettings["-"]; ok {
 			continue
 		}
-		result = append(result, fmt.Sprintf("`%s`.`%s` AS `%s__%s`", model.Alias(), v.DBName, as, v.DBName))
+		alias := model.TableName()
+		if len(model.Alias()) > 0 {
+			alias = model.Alias()
+		}
+		result = append(result, fmt.Sprintf("`%s`.`%s` AS `%s__%s`", alias, v.DBName, as, v.DBName))
 	}
 	return result
 }

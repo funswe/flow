@@ -143,6 +143,52 @@ func (rd *RedisClient) IsNil(err error) bool {
 	return ok
 }
 
+func (rd *RedisClient) GetAllKeys(keyPrefix string) ([]string, error) {
+	iter := rd.rdb.Scan(ctx, 0, rd.fillKey(keyPrefix), 0).Iterator()
+	var keys []string
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+	return keys, nil
+}
+
+func (rd *RedisClient) GetAllKeysWithOutPrefix(keyPrefix string) ([]string, error) {
+	iter := rd.rdb.Scan(ctx, 0, keyPrefix, 0).Iterator()
+	var keys []string
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+	return keys, nil
+}
+
+func (rd *RedisClient) DeleteKeys(keyPrefix string) error {
+	keys, err := rd.GetAllKeys(keyPrefix)
+	if err != nil {
+		return err
+	}
+	for _, v := range keys {
+		err = rd.DeleteKeysWithOutPrefix(v)
+	}
+	return err
+}
+
+func (rd *RedisClient) DeleteKeysWithOutPrefix(keyPrefix string) error {
+	keys, err := rd.GetAllKeysWithOutPrefix(keyPrefix)
+	if err != nil {
+		return err
+	}
+	for _, v := range keys {
+		err = rd.DeleteWithOutPrefix(v)
+	}
+	return err
+}
+
 // 返回默认的redis操作对象
 func defRedis() *RedisClient {
 	return &RedisClient{}
