@@ -135,6 +135,10 @@ func SetJwtConfig(jwtConfig *JwtConfig) {
 	app.setJwtConfig(jwtConfig)
 }
 
+func GetApp() *Application {
+	return app
+}
+
 func GET(path string, handler Handler) {
 	defRouterGroup.GET(path, handler)
 }
