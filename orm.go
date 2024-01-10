@@ -74,7 +74,7 @@ type QueryBuilder[T Model] struct {
 	GroupBy    string
 }
 
-func (q *QueryBuilder[T]) FindOne() (T, error) {
+func (q *QueryBuilder[T]) FindOne() (*T, error) {
 	if q.DB == nil {
 		panic(errors.New("no db server available"))
 	}
@@ -110,9 +110,9 @@ func (q *QueryBuilder[T]) FindOne() (T, error) {
 		db.Group(q.GroupBy)
 	}
 	if err := db.Take(result).Error; err != nil {
-		return result, err
+		return nil, err
 	}
-	return result, nil
+	return &result, nil
 }
 
 func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
