@@ -580,7 +580,8 @@ func (l *dbLogger) Trace(ctx context.Context, begin time.Time, fc func() (string
 func defOrmLogger() *dbLogger {
 	return &dbLogger{
 		LogLevel: logger.Info,
-		logger:   log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+"_sql.log", "debug", app.loggerConfig.LoggerMaxAge),
+		logger: log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+"_sql.log", app.loggerConfig.LoggerLevel,
+			app.loggerConfig.LoggerMaxAge),
 	}
 }
 
@@ -614,7 +615,8 @@ func defOrmPool() *OrmPool {
 // 初始化数据库
 func initDB(app *Application) {
 	if app.ormConfig != nil && app.ormConfig.Enable {
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password, app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password,
+			app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)
 		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 			Logger: defOrmLogger(),
 		})

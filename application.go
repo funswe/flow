@@ -106,7 +106,8 @@ func (app *Application) run() error {
 		app.serverConfig.StaticPath = "statics"
 	}
 	router.ServeFiles("/files/*filepath", http.Dir(app.serverConfig.StaticPath))
-	logFactory = log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+".log", app.loggerConfig.LoggerLevel, app.loggerConfig.LoggerMaxAge)
+	logFactory = log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+".log", app.loggerConfig.LoggerLevel,
+		app.loggerConfig.LoggerMaxAge)
 	app.Logger = logFactory.Create(map[string]interface{}{
 		"appName":     app.serverConfig.AppName,
 		"proxy":       app.serverConfig.Proxy,
