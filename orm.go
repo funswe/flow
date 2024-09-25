@@ -609,7 +609,7 @@ func initDB(app *Application) {
 	if app.ormConfig == nil {
 		return
 	}
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password,
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=true&loc=Local", app.ormConfig.UserName, app.ormConfig.Password,
 		app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: defOrmLogger(),
