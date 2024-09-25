@@ -12,13 +12,13 @@ import (
 // 定义封装的request结构
 type request struct {
 	req *http.Request // 原生的request对象
-	id  int64         // 请求ID
+	id  string        // 请求ID
 	app *Application  // app对象
 }
 
 // 返回封装的request对象
-func newRequest(r *http.Request, id int64, app *Application) *request {
-	return &request{r, id, app}
+func newRequest(r *http.Request, reqId string, app *Application) *request {
+	return &request{r, reqId, app}
 }
 
 // 获取所有的请求头信息

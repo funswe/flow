@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/funswe/flow/utils/json"
 	"github.com/go-redis/redis/v8"
+	"go.uber.org/zap"
 	"reflect"
 	"time"
 )
@@ -81,7 +82,7 @@ func (rd *RedisClient) Close() error {
 func (rd *RedisClient) Get(key string) (RedisResult, error) {
 	val, err := rd.rdb.Get(ctx, rd.fillKey(key)).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return "", NewNil(rd.fillKey(key))
 		}
 		return "", err
@@ -111,7 +112,7 @@ func (rd *RedisClient) Delete(key string) error {
 func (rd *RedisClient) GetWithOutPrefix(key string) (RedisResult, error) {
 	val, err := rd.rdb.Get(ctx, key).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return "", NewNil(rd.fillKey(key))
 		}
 		return "", err
@@ -139,7 +140,8 @@ func (rd *RedisClient) DeleteWithOutPrefix(key string) error {
 }
 
 func (rd *RedisClient) IsNil(err error) bool {
-	_, ok := err.(NotExistError)
+	var notExistError NotExistError
+	ok := errors.As(err, &notExistError)
 	return ok
 }
 
@@ -189,25 +191,23 @@ func (rd *RedisClient) DeleteKeysWithOutPrefix(keyPrefix string) error {
 	return err
 }
 
-// 返回默认的redis操作对象
-func defRedis() *RedisClient {
-	return &RedisClient{}
-}
-
 // 初始化redis
 func initRedis(app *Application) {
-	if app.redisConfig != nil && app.redisConfig.Enable {
-		rdb := redis.NewClient(&redis.Options{
-			Addr:     fmt.Sprintf("%s:%d", app.redisConfig.Host, app.redisConfig.Port),
-			Password: app.redisConfig.Password,
-			DB:       app.redisConfig.DbNum,
-		})
-		app.Redis.rdb = rdb
-		err := rdb.Ping(ctx).Err()
-		if err != nil {
-			panic(err)
-		}
-		app.Redis.app = app
-		logFactory.Info("redis server init ok")
+	if app.redisConfig == nil {
+		return
 	}
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", app.redisConfig.Host, app.redisConfig.Port),
+		Password: app.redisConfig.Password,
+		DB:       app.redisConfig.DbNum,
+	})
+	err := rdb.Ping(ctx).Err()
+	if err != nil {
+		panic(err)
+	}
+	app.Redis = &RedisClient{
+		app: app,
+		rdb: rdb,
+	}
+	app.Logger.Info("redis server started", zap.Any("config", app.redisConfig))
 }

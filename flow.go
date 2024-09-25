@@ -1,7 +1,7 @@
 package flow
 
 import (
-	"github.com/funswe/flow/log"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 )
@@ -43,26 +43,17 @@ const (
 )
 
 var (
-	logFactory *log.Logger
-	app        = &Application{
-		rc:           make(chan int64),
+	app = &Application{
 		serverConfig: defServerConfig(),
 		loggerConfig: defLoggerConfig(),
-		ormConfig:    defOrmConfig(),
-		redisConfig:  defRedisConfig(),
 		corsConfig:   defCorsConfig(),
 		curlConfig:   defCurlConfig(),
-		jwtConfig:    defJwtConfig(),
-		Orm:          defOrm(),
-		Redis:        defRedis(),
-		Curl:         defCurl(),
-		Jwt:          defJwt(),
 		beforeRuns:   make([]BeforeRun, 0),
 	}
-	defRouterGroup = &RouterGroup{}
+	defRouterGroup = NewRouterGroup()
 	asyncTaskLock  = sync.RWMutex{}
-	asyncTaskPool  = make(map[string]AsyncTask, 0)
-	timerPool      = make(map[string]*timerJob, 0)
+	asyncTaskPool  = make(map[string]AsyncTask)
+	timerPool      = make(map[string]*timerJob)
 )
 
 // Use 添加中间件
@@ -238,7 +229,7 @@ func StartTimer(timer Timer) {
 			timer.Run(app)
 		}
 		ticker := time.NewTicker(timer.GetInterval())
-		stopChan := make(chan bool, 0)
+		stopChan := make(chan bool)
 		tJob := &timerJob{
 			stopChan: stopChan,
 			timer:    timer,
@@ -248,7 +239,7 @@ func StartTimer(timer Timer) {
 			defer func() {
 				ticker.Stop()
 				delete(timerPool, tJob.timer.GetName())
-				app.Logger.Infof("timer已停止，名称：%s", timer.GetName())
+				app.Logger.Info("timer已停止", zap.String("name", timer.GetName()))
 			}()
 			for {
 				select {
@@ -266,7 +257,7 @@ func StartTimer(timer Timer) {
 			timer.Run(app)
 		}()
 	}
-	app.Logger.Infof("timer已启动，名称：%s", timer.GetName())
+	app.Logger.Info("timer已启动，名称：%s", zap.String("name", timer.GetName()))
 }
 
 func StopTimer(timerName string) {

@@ -5,15 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/funswe/flow/log"
+	"github.com/funswe/flow/utils"
 	"github.com/funswe/flow/utils/json"
 	"github.com/julienschmidt/httprouter"
+	"go.uber.org/zap"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -50,7 +49,7 @@ type Context struct {
 	data       map[string]interface{} // 用于保存用户定义的数据
 	params     map[string]interface{} // 请求的参数，包括POST，GET和路由的参数
 	app        *Application           // 服务的APP对象
-	Logger     *log.Logger            // 上下文的logger对象，打印日志会自动带上请求的相关参数
+	Logger     *zap.Logger            // 上下文的logger对象，打印日志会自动带上请求的相关参数
 	Orm        *Orm                   // 数据库操作对象，引用app的orm对象
 	Redis      *RedisClient           // redis操作对象，引用app的redis对象
 	Curl       *Curl                  // httpclient操作对象，引用app的curl对象
@@ -59,23 +58,23 @@ type Context struct {
 
 // NewAnonymousContext 返回一个匿名context对象
 func NewAnonymousContext(app *Application) *Context {
-	ctxLogger := logFactory.Create(map[string]interface{}{
+	return &Context{Logger: getLogger(app, map[string]interface{}{
 		"anonymous": true,
-	})
-	return &Context{Logger: ctxLogger, app: app, Orm: app.Orm, Redis: app.Redis, Curl: app.Curl, Jwt: app.Jwt}
+	}), app: app, Orm: app.Orm, Redis: app.Redis, Curl: app.Curl, Jwt: app.Jwt}
 }
 
 // 返回一个新的context对象
-func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, reqId int64, app *Application) *Context {
+func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params, app *Application) *Context {
+	reqId := utils.GetNanoid()
 	// 封装请求的request对象
 	req := newRequest(r, reqId, app)
 	// 封装请求的response对象
 	res := newResponse(w, req, app)
 	// 判断是不是上传文件
 	if strings.HasPrefix(req.getHeader("Content-Type"), "multipart/form-data") {
-		r.ParseMultipartForm(defaultMultipartMemory)
+		_ = r.ParseMultipartForm(defaultMultipartMemory)
 	} else {
-		r.ParseForm()
+		_ = r.ParseForm()
 	}
 	mapParams := make(map[string]interface{})
 	if len(params) > 0 {
@@ -89,7 +88,7 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	var rawBody []byte
 	var err error
 	if r.Body != nil {
-		rawBody, err = ioutil.ReadAll(r.Body)
+		rawBody, err = io.ReadAll(r.Body)
 	}
 	// 如果是json请求，解析json数据，如果form参数和json参数相同，json参数覆盖form参数
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
@@ -104,11 +103,11 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 		}
 	}
 	h := md5.New()
-	h.Write([]byte(fmt.Sprintf("request-%d-%d", req.id, time.Now().Nanosecond())))
+	h.Write([]byte(fmt.Sprintf("request-%s-%d", req.id, time.Now().Nanosecond())))
 	suffix := hex.EncodeToString(h.Sum(nil))
 	logId := fmt.Sprintf("%s%s", time.Now().Format("20060102150405"), strings.ToUpper(suffix))
 	// 定义上下文的logger对象，打印的时候带上请求的ID和ua
-	ctxLogger := logFactory.Create(map[string]interface{}{
+	ctxLogger := getLogger(app, map[string]interface{}{
 		"reqId": req.id,
 		"logId": logId,
 		"ua":    req.getUserAgent(),
@@ -119,18 +118,18 @@ func newContext(w http.ResponseWriter, r *http.Request, params httprouter.Params
 // SetData 保存key / value数据
 func (c *Context) SetData(key string, value interface{}) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.data == nil {
 		c.data = make(map[string]interface{})
 	}
 	c.data[key] = value
-	c.mu.Unlock()
 }
 
 // GetData 获取数据
 func (c *Context) GetData(key string) (value interface{}, exists bool) {
 	c.mu.RLock()
+	defer c.mu.RUnlock()
 	value, exists = c.data[key]
-	c.mu.RUnlock()
 	return
 }
 
@@ -383,26 +382,8 @@ func (c *Context) FormFile(name string) (*multipart.FileHeader, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Close()
+	_ = f.Close()
 	return fh, err
-}
-
-// SaveUploadedFile 保存上传的文件到指定位置
-func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string, flag int) error {
-	src, err := file.Open()
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	out, err := os.OpenFile(dst, flag, 0644)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, src)
-	return err
 }
 
 // GetHeaders 获取请求的所有头信息
@@ -502,11 +483,6 @@ func (c *Context) SetLength(length int) *Context {
 // Redirect 设置返回的重定向地址
 func (c *Context) Redirect(url string, code int) {
 	c.res.redirect(url, code)
-}
-
-// Download 下载文件
-func (c *Context) Download(filePath string) {
-	c.res.download(filePath)
 }
 
 // Res ResponseWriterAdapter返回自定义数据

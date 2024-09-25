@@ -3,10 +3,11 @@ package flow
 import (
 	"errors"
 	"github.com/golang-jwt/jwt/v4"
+	"go.uber.org/zap"
 	"time"
 )
 
-// 定义JWT配置
+// JwtConfig 定义JWT配置
 type JwtConfig struct {
 	Timeout   time.Duration // 请求的超时时间，单位小时
 	SecretKey string        // 秘钥
@@ -19,13 +20,9 @@ func defJwtConfig() *JwtConfig {
 	}
 }
 
-// 定义JWT对象
+// Jwt 定义JWT对象
 type Jwt struct {
 	app *Application
-}
-
-func defJwt() *Jwt {
-	return &Jwt{}
 }
 
 type Claims struct {
@@ -64,6 +61,9 @@ func (j *Jwt) Valid(token string) (map[string]interface{}, error) {
 
 // 初始化JWT对象
 func initJwt(app *Application) {
-	app.Jwt.app = app
-	logFactory.Info("jwt server init ok")
+	if app.jwtConfig == nil {
+		return
+	}
+	app.Jwt = &Jwt{app: app}
+	app.Logger.Info("jwt server started", zap.Any("config", app.jwtConfig))
 }

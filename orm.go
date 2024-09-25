@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
@@ -12,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/funswe/flow/log"
 	"gorm.io/driver/mysql"
 )
 
@@ -20,7 +20,6 @@ const NoSelect = "NOSELECT"
 
 // OrmConfig 定义数据库配置
 type OrmConfig struct {
-	Enable   bool
 	UserName string
 	Password string
 	DbName   string
@@ -151,8 +150,8 @@ func (q *QueryBuilder[T]) Query() (int64, *[]T, error) {
 	if q.Limit.Offset > 0 {
 		db.Offset(q.Limit.Offset)
 	}
-	if q.Limit.Limit > 0 {
-		db.Limit(q.Limit.Limit)
+	if *q.Limit.Limit > 0 {
+		db.Limit(*q.Limit.Limit)
 	}
 	if err := db.Find(&result).Error; err != nil {
 		return 0, nil, err
@@ -488,8 +487,8 @@ func (q *QueryBuilder[T]) fillConditions(db *gorm.DB, conditions []map[string]in
 
 func (q *QueryBuilder[T]) GetSelectFields(model Model) []string {
 	result := make([]string, 0)
-	schema, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
-	for _, v := range schema.Fields {
+	schemaInfo, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
+	for _, v := range schemaInfo.Fields {
 		if _, ok := v.TagSettings[NoSelect]; ok {
 			continue
 		}
@@ -507,8 +506,8 @@ func (q *QueryBuilder[T]) GetSelectFields(model Model) []string {
 
 func (q *QueryBuilder[T]) GetHasOneJoinSelectFields(model Model, as string) []string {
 	result := make([]string, 0)
-	schema, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
-	for _, v := range schema.Fields {
+	schemaInfo, _ := schema.Parse(model, &sync.Map{}, schema.NamingStrategy{})
+	for _, v := range schemaInfo.Fields {
 		if _, ok := v.TagSettings[NoSelect]; ok {
 			continue
 		}
@@ -530,7 +529,7 @@ type Orm struct {
 	db  *gorm.DB     // grom db对象
 }
 
-// DB 返回grom db对象，用于原生查询使用
+// DB 返回gorm db对象，用于原生查询使用
 func (orm *Orm) DB() *gorm.DB {
 	if orm.db == nil {
 		panic(errors.New("no db server available"))
@@ -541,7 +540,7 @@ func (orm *Orm) DB() *gorm.DB {
 // 定义数据库logger对象
 type dbLogger struct {
 	LogLevel logger.LogLevel
-	logger   *log.Logger
+	logger   *zap.Logger
 }
 
 func (l *dbLogger) LogMode(level logger.LogLevel) logger.Interface {
@@ -552,27 +551,27 @@ func (l *dbLogger) LogMode(level logger.LogLevel) logger.Interface {
 
 func (l *dbLogger) Info(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= logger.Info {
-		l.logger.Debugf(msg, data...)
+		l.logger.Info(msg, zap.Any("data", data))
 	}
 }
 
 func (l *dbLogger) Warn(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= logger.Warn {
-		l.logger.Debugf(msg, data...)
+		l.logger.Warn(msg, zap.Any("data", data))
 	}
 }
 
 func (l *dbLogger) Error(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= logger.Error {
-		l.logger.Debugf(msg, data...)
+		l.logger.Error(msg, zap.Any("data", data))
 	}
 }
 
 func (l *dbLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	if l.LogLevel > 0 {
-		elapsed := time.Since(begin)
 		sql, rows := fc()
-		l.logger.Debugf("[%fms] [affected:%d] %s", float64(elapsed.Nanoseconds())/1e6, rows, sql)
+		l.logger.Debug("sql exec", zap.String("elapsed", time.Since(begin).Round(time.Millisecond).String()),
+			zap.Int64("affected", rows), zap.String("sql", sql))
 	}
 }
 
@@ -580,20 +579,13 @@ func (l *dbLogger) Trace(ctx context.Context, begin time.Time, fc func() (string
 func defOrmLogger() *dbLogger {
 	return &dbLogger{
 		LogLevel: logger.Info,
-		logger: log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+"_sql.log", app.loggerConfig.LoggerLevel,
-			app.loggerConfig.LoggerMaxAge),
+		logger:   getOrmLogger(app, nil),
 	}
-}
-
-// 返回默认的数据库操作对象
-func defOrm() *Orm {
-	return &Orm{}
 }
 
 // 返回默认的数据库配置
 func defOrmConfig() *OrmConfig {
 	return &OrmConfig{
-		Enable:   false,
 		UserName: "root",
 		Password: "root",
 		Host:     "127.0.0.1",
@@ -614,28 +606,32 @@ func defOrmPool() *OrmPool {
 
 // 初始化数据库
 func initDB(app *Application) {
-	if app.ormConfig != nil && app.ormConfig.Enable {
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password,
-			app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)
-		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-			Logger: defOrmLogger(),
-		})
-		if err != nil {
-			panic(err)
-		}
-		sqlDB, err := db.DB()
-		if err != nil {
-			panic(err)
-		}
-		sqlDB.SetConnMaxIdleTime(time.Duration(app.ormConfig.Pool.ConnMaxIdleTime) * time.Second)
-		sqlDB.SetConnMaxLifetime(time.Duration(app.ormConfig.Pool.ConnMaxLifeTime) * time.Second)
-		sqlDB.SetMaxIdleConns(app.ormConfig.Pool.MaxIdle)
-		sqlDB.SetMaxOpenConns(app.ormConfig.Pool.MaxOpen)
-		err = sqlDB.Ping()
-		if err != nil {
-			panic(err)
-		}
-		app.Orm.db = db
-		logFactory.Info("db server init ok")
+	if app.ormConfig == nil {
+		return
 	}
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&loc=Local", app.ormConfig.UserName, app.ormConfig.Password,
+		app.ormConfig.Host, app.ormConfig.Port, app.ormConfig.DbName)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: defOrmLogger(),
+	})
+	if err != nil {
+		panic(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic(err)
+	}
+	sqlDB.SetConnMaxIdleTime(time.Duration(app.ormConfig.Pool.ConnMaxIdleTime) * time.Second)
+	sqlDB.SetConnMaxLifetime(time.Duration(app.ormConfig.Pool.ConnMaxLifeTime) * time.Second)
+	sqlDB.SetMaxIdleConns(app.ormConfig.Pool.MaxIdle)
+	sqlDB.SetMaxOpenConns(app.ormConfig.Pool.MaxOpen)
+	err = sqlDB.Ping()
+	if err != nil {
+		panic(err)
+	}
+	app.Orm = &Orm{
+		app: app,
+		db:  db,
+	}
+	app.Logger.Info("db server started", zap.Any("config", app.ormConfig))
 }

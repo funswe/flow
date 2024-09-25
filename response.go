@@ -1,10 +1,7 @@
 package flow
 
 import (
-	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/funswe/flow/utils/json"
@@ -73,28 +70,10 @@ func (r *response) redirect(url string, code int) {
 	http.Redirect(r.res, r.req.req, url, code)
 }
 
-// 下载文件
-func (r *response) download(filePath string) {
-	if !filepath.IsAbs(filePath) {
-		filePath = filepath.Join(app.serverConfig.StaticPath, filePath)
-	}
-	if _, err := os.Stat(filePath); err != nil {
-		http.ServeFile(r.res, r.req.req, filePath)
-		return
-	}
-	_, fileName := filepath.Split(filePath)
-	r.setHeader(HttpHeaderContentDisposition, fmt.Sprintf("attachment; filename=\"%s\"", fileName))
-	r.setHeader(HttpHeaderContentType, "application/octet-stream")
-	r.setHeader(HttpHeaderContentTransferEncoding, "binary")
-	r.setHeader(HttpHeaderExpires, "0")
-	r.setHeader(HttpHeaderCacheControl, "must-revalidate")
-	http.ServeFile(r.res, r.req.req, filePath)
-}
-
 func (r *response) raw(data []byte) {
 	if r.req.getMethod() != HttpMethodHead {
-		r.res.Write(data)
+		_, _ = r.res.Write(data)
 	} else {
-		r.res.Write([]byte{})
+		_, _ = r.res.Write([]byte{})
 	}
 }

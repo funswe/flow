@@ -2,30 +2,26 @@ package flow
 
 import (
 	"fmt"
-	"github.com/funswe/flow/log"
-	"github.com/funswe/flow/utils/files"
+	"go.uber.org/zap"
 	"net/http"
-	"os"
 	"path/filepath"
 )
 
 // ServerConfig 定义服务配置
 type ServerConfig struct {
-	AppName    string // 应用名称
-	Proxy      bool   // 是否是代理模式
-	Host       string // 服务启动地址
-	Port       int    // 服务端口
-	StaticPath string // 服务器静态资源路径
+	AppName string // 应用名称
+	Proxy   bool   // 是否是代理模式
+	Host    string // 服务启动地址
+	Port    int    // 服务端口
 }
 
 // 返回默认的服务配置
 func defServerConfig() *ServerConfig {
 	return &ServerConfig{
-		AppName:    defAppName(),
-		Proxy:      defProxy(),
-		Host:       defHost(),
-		Port:       defPort(),
-		StaticPath: defStaticPath(),
+		AppName: defAppName(),
+		Proxy:   defProxy(),
+		Host:    defHost(),
+		Port:    defPort(),
 	}
 }
 
@@ -34,6 +30,7 @@ type LoggerConfig struct {
 	LoggerLevel  string
 	LoggerPath   string
 	LoggerMaxAge int64
+	FormatJson   bool
 }
 
 type BeforeRun func(app *Application)
@@ -44,6 +41,7 @@ func defLoggerConfig() *LoggerConfig {
 		LoggerLevel:  defLoggerLevel(),
 		LoggerPath:   defLoggerPath(),
 		LoggerMaxAge: defLoggerMaxAge(),
+		FormatJson:   defLoggerFormatJson(),
 	}
 }
 
@@ -63,11 +61,6 @@ func defPort() int {
 	return 9505
 }
 
-func defStaticPath() string {
-	path, _ := filepath.Abs(".")
-	return filepath.Join(path, "statics")
-}
-
 func defLoggerPath() string {
 	path, _ := filepath.Abs(".")
 	return filepath.Join(path, "logs")
@@ -81,11 +74,14 @@ func defLoggerMaxAge() int64 {
 	return 30
 }
 
+func defLoggerFormatJson() bool {
+	return true
+}
+
 // Application 定义服务的APP
 type Application struct {
 	reqId        int64         // 请求ID，每次递增1，服务重启就从1开始计数
-	rc           chan int64    // 请求ID的传递channel
-	Logger       *log.Logger   // 日志对象
+	Logger       *zap.Logger   // 日志对象
 	serverConfig *ServerConfig // 服务配置
 	loggerConfig *LoggerConfig // 日志配置
 	ormConfig    *OrmConfig    // 数据库配置
@@ -102,27 +98,14 @@ type Application struct {
 
 // 启动服务
 func (app *Application) run() error {
-	if len(app.serverConfig.StaticPath) == 0 {
-		app.serverConfig.StaticPath = "statics"
-	}
-	router.ServeFiles("/files/*filepath", http.Dir(app.serverConfig.StaticPath))
-	logFactory = log.New(app.loggerConfig.LoggerPath, app.serverConfig.AppName+".log", app.loggerConfig.LoggerLevel,
-		app.loggerConfig.LoggerMaxAge)
-	app.Logger = logFactory.Create(map[string]interface{}{
+	app.Logger = getLogger(app, map[string]interface{}{
 		"appName":     app.serverConfig.AppName,
 		"proxy":       app.serverConfig.Proxy,
 		"host":        app.serverConfig.Host,
 		"port":        app.serverConfig.Port,
 		"loggerPath":  app.loggerConfig.LoggerPath,
 		"loggerLevel": app.loggerConfig.LoggerLevel,
-		"staticPath":  app.serverConfig.StaticPath,
 	})
-	app.Logger.Info("start params")
-	if len(app.serverConfig.StaticPath) != 0 {
-		if !files.PathExists(app.serverConfig.StaticPath) {
-			os.MkdirAll(app.serverConfig.StaticPath, os.ModePerm)
-		}
-	}
 	// 初始化数据库
 	initDB(app)
 	// 初始化REDIS
@@ -131,16 +114,10 @@ func (app *Application) run() error {
 	initCurl(app)
 	// 初始化jwt
 	initJwt(app)
-	// 启动一个独立的携程处理请求ID的递增
-	go func() {
-		for {
-			app.reqId++
-			app.rc <- app.reqId
-		}
-	}()
 	for _, beforeRun := range app.beforeRuns {
 		beforeRun(app)
 	}
+	app.Logger.Info("server started")
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port), router)
 }
 

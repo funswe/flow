@@ -2,6 +2,7 @@ package flow
 
 import (
 	"github.com/julienschmidt/httprouter"
+	"go.uber.org/zap"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -32,10 +33,10 @@ func (f NotFoundHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f(w, r)
 }
 
-// 定义中间件接口
+// Middleware 定义中间件接口
 type Middleware func(ctx *Context, next Next)
 
-// 定义路由处理器
+// Handler 定义路由处理器
 type Handler func(ctx *Context)
 
 func dispatch(ctx *Context, index int, handler Handler, rg *RouterGroup) Next {
@@ -51,21 +52,24 @@ func dispatch(ctx *Context, index int, handler Handler, rg *RouterGroup) Next {
 
 func handle(handler Handler, rg *RouterGroup) func(http.ResponseWriter, *http.Request, httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-		ctx := newContext(w, r, params, <-app.rc, app)
+		ctx := newContext(w, r, params, app)
 		dispatch(ctx, 0, handler, rg)()
 	}
 }
 
-func GetRouterGroup() *RouterGroup {
+func NewRouterGroup() *RouterGroup {
 	rg := &RouterGroup{}
 	// 添加默认的中间件
 	rg.middleware = append([]Middleware{func(ctx *Context, next Next) {
 		// 添加请求日志打印
 		start := time.Now()
-		ctx.Logger.Infof("request incoming, method: %s, uri: %s, host: %s, protocol: %s", ctx.GetMethod(), ctx.GetUri(), ctx.GetHost(), ctx.GetProtocol())
+		ctx.Logger.Info("request incoming",
+			zap.String("method", ctx.GetMethod()), zap.String("uri", ctx.GetUri()),
+			zap.String("host", ctx.GetHost()), zap.String("protocol", ctx.GetProtocol()))
 		next()
-		cost := time.Since(start)
-		ctx.Logger.Infof("request completed, cost: %fms, statusCode: %d", float64(cost.Nanoseconds())/1e6, ctx.statusCode)
+		ctx.Logger.Info("request completed",
+			zap.String("cost", time.Since(start).Round(time.Millisecond).String()),
+			zap.Int("statusCode", ctx.statusCode))
 	}, func(ctx *Context, next Next) {
 		ctx.SetHeader(HttpHeaderXPoweredBy, "flow")
 		// 添加跨域支持
@@ -84,7 +88,7 @@ func GetRouterGroup() *RouterGroup {
 	return rg
 }
 
-// 添加中间件
+// Use 添加中间件
 func (rg *RouterGroup) Use(m Middleware) *RouterGroup {
 	rg.middleware = append(rg.middleware, m)
 	return rg
@@ -126,18 +130,6 @@ func (rg *RouterGroup) DELETE(path string, handler Handler) *RouterGroup {
 	return rg
 }
 
-//func StaticFiles(prefix, path string) {
-//	app.staticPath = path
-//	if !strings.HasPrefix(prefix, "/") {
-//		prefix = "/" + prefix
-//	}
-//	if !strings.HasSuffix(prefix, "/") {
-//		prefix = prefix + "/"
-//	}
-//	prefix = prefix + "*filepath"
-//	router.ServeFiles(prefix, http.Dir(path))
-//}
-
 func (rg *RouterGroup) ALL(path string, handler Handler) *RouterGroup {
 	router.Handle(HttpMethodGet, path, handle(handler, rg))
 	router.Handle(HttpMethodHead, path, handle(handler, rg))
@@ -154,11 +146,11 @@ func defaultErrorHandle() PanicHandler {
 		w.Header().Set(HttpHeaderContentType, "text/plain; charset=utf-8")
 		w.WriteHeader(500)
 		if v, ok := err.(string); ok {
-			w.Write([]byte(v))
+			_, _ = w.Write([]byte(v))
 		} else if v, ok := err.(error); ok {
-			w.Write([]byte(v.Error()))
+			_, _ = w.Write([]byte(v.Error()))
 		} else {
-			w.Write([]byte("unknown server error"))
+			_, _ = w.Write([]byte("unknown server error"))
 		}
 	}
 }
@@ -168,7 +160,7 @@ func defaultNotFoundHandle() NotFoundHandle {
 		w.Header().Set(HttpHeaderContentType, "text/plain; charset=utf-8")
 		w.Header().Set(HttpHeaderXContentTypeOptions, "nosniff")
 		w.WriteHeader(404)
-		w.Write([]byte("404 page not found"))
+		_, _ = w.Write([]byte("404 page not found"))
 	}
 }
 
@@ -177,7 +169,7 @@ func SetPanicHandler(ph PanicHandler) {
 		ph = defaultErrorHandle()
 	}
 	router.PanicHandler = func(w http.ResponseWriter, r *http.Request, err interface{}) {
-		logFactory.Error(err, "\n", string(debug.Stack()))
+		app.Logger.Error("error", zap.ByteString("Stack", debug.Stack()))
 		ph(w, r, err)
 	}
 }

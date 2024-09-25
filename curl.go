@@ -3,12 +3,13 @@ package flow
 import (
 	"github.com/funswe/flow/utils/json"
 	"github.com/go-resty/resty/v2"
+	"go.uber.org/zap"
 	"net/http"
 	"strings"
 	"time"
 )
 
-// 定义httpclient配置
+// CurlConfig 定义httpclient配置
 type CurlConfig struct {
 	Timeout time.Duration     // 请求的超时时间，单位秒
 	Headers map[string]string // 统一请求的头信息
@@ -21,28 +22,25 @@ func defCurlConfig() *CurlConfig {
 	}
 }
 
-// 定义返回的结果
+// CurlResult 定义返回的结果
 type CurlResult struct {
 	*resty.Response
 }
 
-// 将返回的结果定义到给定的对象里
+// Parse 将返回的结果定义到给定的对象里
 func (cr *CurlResult) Parse(v interface{}) error {
 	return json.Unmarshal(cr.Body(), v)
 }
 
-// 定义httpclient对象
+// Curl 定义httpclient对象
 type Curl struct {
 	app    *Application
 	client *resty.Client
 }
 
-func defCurl() *Curl {
-	return &Curl{}
-}
-
 func (c *Curl) Get(url string, data map[string]string, headers map[string]string) (*CurlResult, error) {
-	logFactory.Debugf("curl request start, method: get, url: %s, data: %+v, headers: %+v", url, data, headers)
+	c.app.Logger.Debug("curl request start", zap.String("method", "get"),
+		zap.String("url", url), zap.Any("data", data), zap.Any("headers", headers))
 	r := c.client.R().SetHeaders(c.app.curlConfig.Headers)
 	if data != nil {
 		r.SetQueryParams(data)
@@ -52,7 +50,7 @@ func (c *Curl) Get(url string, data map[string]string, headers map[string]string
 	}
 	res, err := r.Get(url)
 	if err != nil {
-		logFactory.Errorf("curl request end, error: %s", err.Error())
+		c.app.Logger.Error("curl request end", zap.Error(err))
 		return nil, err
 	}
 	showBody := false
@@ -60,15 +58,18 @@ func (c *Curl) Get(url string, data map[string]string, headers map[string]string
 		showBody = true
 	}
 	if showBody {
-		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
+		c.app.Logger.Debug("curl request end", zap.Int("StatusCode", res.StatusCode()),
+			zap.String("CostTime", res.Time().String()), zap.String("body", res.String()))
 	} else {
-		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s", res.StatusCode(), res.Time())
+		c.app.Logger.Debug("curl request end", zap.Int("StatusCode", res.StatusCode()),
+			zap.String("CostTime", res.Time().String()))
 	}
 	return &CurlResult{res}, nil
 }
 
 func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*CurlResult, error) {
-	logFactory.Debugf("curl request start, method: post, url: %s, data: %+v, headers: %+v", url, data, headers)
+	c.app.Logger.Debug("curl request start", zap.String("method", "post"),
+		zap.String("url", url), zap.Any("data", data), zap.Any("headers", headers))
 	r := c.client.R().SetHeaders(c.app.curlConfig.Headers)
 	if data != nil {
 		r.SetBody(data)
@@ -78,7 +79,7 @@ func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*C
 	}
 	res, err := r.Post(url)
 	if err != nil {
-		logFactory.Errorf("curl request end, error: %s", err.Error())
+		c.app.Logger.Error("curl request end", zap.Error(err))
 		return nil, err
 	}
 	showBody := false
@@ -86,18 +87,25 @@ func (c *Curl) Post(url string, data interface{}, headers map[string]string) (*C
 		showBody = true
 	}
 	if showBody {
-		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s, body: %s", res.StatusCode(), res.Time(), res.String())
+		c.app.Logger.Debug("curl request end", zap.Int("StatusCode", res.StatusCode()),
+			zap.String("CostTime", res.Time().String()), zap.String("body", res.String()))
 	} else {
-		logFactory.Debugf("curl request end, StatusCode: %d, CostTime: %s", res.StatusCode(), res.Time())
+		c.app.Logger.Debug("curl request end", zap.Int("StatusCode", res.StatusCode()),
+			zap.String("CostTime", res.Time().String()))
 	}
 	return &CurlResult{res}, nil
 }
 
 // 初始化httpclient对象
 func initCurl(app *Application) {
-	app.Curl.client = resty.NewWithClient(&http.Client{
-		Timeout: app.curlConfig.Timeout,
-	})
-	app.Curl.app = app
-	logFactory.Info("curl server init ok")
+	if app.curlConfig == nil {
+		return
+	}
+	app.Curl = &Curl{
+		app: app,
+		client: resty.NewWithClient(&http.Client{
+			Timeout: app.curlConfig.Timeout,
+		}),
+	}
+	app.Logger.Info("curl server started", zap.Any("config", app.curlConfig))
 }
