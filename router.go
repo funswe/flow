@@ -73,12 +73,10 @@ func NewRouterGroup() *RouterGroup {
 	}, func(ctx *Context, next Next) {
 		ctx.SetHeader(HttpHeaderXPoweredBy, "flow")
 		// 添加跨域支持
-		if app.corsConfig.Enable {
-			ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
-			ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethods)
-			ctx.SetHeader(HttpHeaderCorsHeaders, app.corsConfig.AllowedHeaders)
-			ctx.SetHeader(HttpHeaderCorsMaxAge, "172800")
-		}
+		ctx.SetHeader(HttpHeaderCorsOrigin, app.corsConfig.AllowOrigin)
+		ctx.SetHeader(HttpHeaderCorsMethods, app.corsConfig.AllowedMethods)
+		ctx.SetHeader(HttpHeaderCorsHeaders, app.corsConfig.AllowedHeaders)
+		ctx.SetHeader(HttpHeaderCorsMaxAge, "172800")
 		if ctx.GetMethod() == HttpMethodOptions {
 			ctx.res.raw([]byte("true"))
 			return
