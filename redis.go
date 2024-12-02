@@ -191,6 +191,10 @@ func (rd *RedisClient) DeleteKeysWithOutPrefix(keyPrefix string) error {
 	return err
 }
 
+func (rd *RedisClient) GetClient() *redis.Client {
+	return rd.rdb
+}
+
 // 初始化redis
 func initRedis(app *Application) {
 	if app.redisConfig == nil {
