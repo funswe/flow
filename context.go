@@ -507,3 +507,27 @@ func (c *Context) Json(data map[string]interface{}) {
 func (c *Context) GetApp() *Application {
 	return c.app
 }
+
+// GetStatus 获取当前设置的http状态码，未显式设置时返回0
+func (c *Context) GetStatus() int {
+	return c.statusCode
+}
+
+// GetResWriter 获取底层的http.ResponseWriter
+// 中间件可以据此在返回链路上再包一层，例如：
+//
+//	recorder := flow.NewResponseRecorder(ctx.GetResWriter(), 0)
+//	ctx.SetResWriter(recorder)
+//	next()
+//	// recorder.Status() / recorder.Body()
+func (c *Context) GetResWriter() http.ResponseWriter {
+	return c.res.res
+}
+
+// SetResWriter 替换底层的http.ResponseWriter。传入的writer必须自行转发到原writer，
+// 否则响应无法输出；典型实现见ResponseRecorder。
+func (c *Context) SetResWriter(w http.ResponseWriter) {
+	if w != nil {
+		c.res.res = w
+	}
+}
