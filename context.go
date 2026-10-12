@@ -54,6 +54,8 @@ type Context struct {
 	Redis      *RedisClient           // redis操作对象，引用app的redis对象
 	Curl       *Curl                  // httpclient操作对象，引用app的curl对象
 	Jwt        *Jwt                   // JWT操作对象，引用app的jwt对象
+	panicValue interface{}            // handler panic的值，由flow在最内层收口时填充
+	panicStack []byte                 // handler panic时的完整堆栈
 }
 
 // NewAnonymousContext 返回一个匿名context对象
@@ -530,4 +532,11 @@ func (c *Context) SetResWriter(w http.ResponseWriter) {
 	if w != nil {
 		c.res.res = w
 	}
+}
+
+// GetPanic 获取处理器panic的值与完整堆栈；未发生panic时ok为false。
+// flow在handler外层（全部中间件之内）收口panic并写出响应，因此中间件在next()之后
+// 仍能正常执行，并可据此记录或上报（访问日志、APM、错误上报等）。
+func (c *Context) GetPanic() (value interface{}, stack []byte, ok bool) {
+	return c.panicValue, c.panicStack, c.panicValue != nil
 }

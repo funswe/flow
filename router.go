@@ -10,13 +10,38 @@ import (
 
 var (
 	router         = httprouter.New()        // 路由对象
-	panicHandler   = defaultErrorHandle()    // 统一错误处理方法
 	notFoundHandle = defaultNotFoundHandle() // 路由不存在处理方法
+	// appPanicHandler 应用配置的panic处理器（SetPanicHandler可替换）。
+	// handler层的panic与中间件层的panic共用同一份，保证响应口径一致。
+	appPanicHandler = defaultErrorHandle()
 )
 
 func init() {
-	router.PanicHandler = panicHandler
+	// httprouter这层只兜中间件自身的panic；handler的panic由dispatch最内层收口
+	router.PanicHandler = func(w http.ResponseWriter, r *http.Request, err interface{}) {
+		logPanicStack(app.Logger, debug.Stack())
+		appPanicHandler(w, r, err)
+	}
 	router.NotFound = notFoundHandle
+}
+
+// logPanicStack 打印panic堆栈，便于与业务日志、访问日志关联排查
+func logPanicStack(logger *zap.Logger, stack []byte) {
+	if logger != nil {
+		logger.Error("error", zap.ByteString("Stack", stack))
+	}
+}
+
+// flowPanic 收口handler的panic：记录panic值与完整堆栈，再交由应用配置的处理器写出响应。
+// 响应写到ctx的writer上（而非最初那个writer），这样中间件包装过的writer（如访问日志的
+// ResponseRecorder）也能观察到这次响应；此处调用栈仍包含处理器帧，所以堆栈是完整的。
+func flowPanic(ctx *Context, err interface{}) {
+	stack := debug.Stack()
+	ctx.panicValue = err
+	ctx.panicStack = stack
+	// 用ctx的logger带上请求上下文（reqId、ua等）打印，便于和访问日志对应
+	logPanicStack(ctx.Logger, stack)
+	appPanicHandler(ctx.res.res, ctx.req.req, err)
 }
 
 type RouterGroup struct {
@@ -42,6 +67,13 @@ type Handler func(ctx *Context)
 func dispatch(ctx *Context, index int, handler Handler, rg *RouterGroup) Next {
 	if index >= len(rg.middleware) {
 		return func() {
+			// 最内层包住handler：panic在这里收口（记录堆栈、写出响应），不再向上抛。
+			// 这样外层所有中间件都能正常走完，可以像普通响应一样观察到panic的结果。
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					flowPanic(ctx, recovered)
+				}
+			}()
 			handler(ctx)
 		}
 	}
@@ -162,14 +194,13 @@ func defaultNotFoundHandle() NotFoundHandle {
 	}
 }
 
+// SetPanicHandler 设置应用自己的panic处理器（handler层与中间件层panic共用），
+// 传nil恢复默认处理器。
 func SetPanicHandler(ph PanicHandler) {
 	if ph == nil {
 		ph = defaultErrorHandle()
 	}
-	router.PanicHandler = func(w http.ResponseWriter, r *http.Request, err interface{}) {
-		app.Logger.Error("error", zap.ByteString("Stack", debug.Stack()))
-		ph(w, r, err)
-	}
+	appPanicHandler = ph
 }
 
 func SetNotFoundHandle(nfh NotFoundHandle) {
