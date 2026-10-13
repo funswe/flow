@@ -1,10 +1,16 @@
 package flow
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 )
 
 // ServerConfig 定义服务配置
@@ -98,6 +104,9 @@ type Application struct {
 	Jwt          *Jwt          // JWT对象
 	beforeRuns   []BeforeRun   // 运行前需要执行的函数列表
 	afterRuns    []AfterRun    // 退出后需要执行的函数列表（逆序执行，便于按依赖倒序清理）
+
+	// shutdownTimeout 优雅停机等待在途请求的最长时间，<=0 时使用默认值
+	shutdownTimeout time.Duration
 }
 
 // 启动服务
@@ -122,10 +131,62 @@ func (app *Application) run() error {
 		beforeRun(app)
 	}
 	app.Logger.Info("server started")
-	err := http.ListenAndServe(fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port), router)
-	// 服务退出后执行收尾钩子（逆序，便于按依赖倒序释放资源）
+	srv := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port),
+		Handler: router,
+	}
+	err := app.serve(srv)
+	if errors.Is(err, http.ErrServerClosed) {
+		// 收到停机信号并完成优雅停机：先执行退出钩子，再以 0 退出。
+		// 停机是预期内的退出，直接退出可避免调用方 log.Fatal(nil) 打出 "<nil>" 且返回非 0 退出码。
+		app.Logger.Info("server shutdown gracefully")
+		app.runAfterRuns()
+		_ = app.Logger.Sync()
+		os.Exit(0)
+	}
+	// 启动失败等非停机退出：同样执行退出钩子，并把错误交回调用方
 	app.runAfterRuns()
 	return err
+}
+
+// defShutdownTimeout 优雅停机默认等待时间。取5秒是为了小于 supervisor 等进程管理器
+// 默认10秒的 stopwaitsecs，避免还没收尾完就被强杀。
+const defShutdownTimeout = 5 * time.Second
+
+// serve 启动HTTP服务，并在收到SIGINT/SIGTERM后优雅停机
+func (app *Application) serve(srv *http.Server) error {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sig)
+
+	quit := make(chan struct{})
+	defer close(quit)
+	go func() {
+		select {
+		case s := <-sig:
+			app.Logger.Info("shutdown signal received", zap.String("signal", s.String()))
+			app.shutdown(srv)
+		case <-quit:
+		}
+	}()
+	return srv.ListenAndServe()
+}
+
+// shutdown 停止接收新请求并等待在途请求结束；超过 shutdownTimeout 则强制关闭
+func (app *Application) shutdown(srv *http.Server) {
+	ctx, cancel := context.WithTimeout(context.Background(), app.shutdownTimeoutOrDefault())
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		app.Logger.Error("graceful shutdown timeout, force close", zap.Error(err))
+		_ = srv.Close()
+	}
+}
+
+func (app *Application) shutdownTimeoutOrDefault() time.Duration {
+	if app.shutdownTimeout > 0 {
+		return app.shutdownTimeout
+	}
+	return defShutdownTimeout
 }
 
 // 设置服务配置
@@ -179,6 +240,12 @@ func (app *Application) addBefore(b BeforeRun) *Application {
 // 添加退出后需要执行的方法
 func (app *Application) addAfter(a AfterRun) *Application {
 	app.afterRuns = append(app.afterRuns, a)
+	return app
+}
+
+// 设置优雅停机超时
+func (app *Application) setShutdownTimeout(d time.Duration) *Application {
+	app.shutdownTimeout = d
 	return app
 }
 

@@ -168,6 +168,11 @@ func AddAfter(a AfterRun) {
 	app.addAfter(a)
 }
 
+// SetShutdownTimeout 设置优雅停机等待在途请求的最长时间；<=0 时使用默认5秒
+func SetShutdownTimeout(d time.Duration) {
+	app.setShutdownTimeout(d)
+}
+
 // Run 启动服务
 func Run() error {
 	return app.run()
