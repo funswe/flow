@@ -403,6 +403,16 @@ func (c *Context) GetUri() string {
 	return c.req.getUri()
 }
 
+// GetRequestId 获取本次请求的ID，即flow在建上下文时生成的请求ID，
+// 与日志里的reqId是同一个值，可直接用于把业务记录（如访问日志）与日志关联；
+// 匿名上下文没有请求，返回空串。
+func (c *Context) GetRequestId() string {
+	if c.req == nil {
+		return ""
+	}
+	return c.req.id
+}
+
 // GetHost 获取请求的HOST信息
 func (c *Context) GetHost() string {
 	return c.req.getHost()
