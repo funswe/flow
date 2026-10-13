@@ -163,6 +163,11 @@ func AddBefore(b BeforeRun) {
 	app.addBefore(b)
 }
 
+// AddAfter 添加服务退出（Run返回）后需要执行的方法，逆序执行
+func AddAfter(a AfterRun) {
+	app.addAfter(a)
+}
+
 // Run 启动服务
 func Run() error {
 	return app.run()

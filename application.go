@@ -35,6 +35,9 @@ type LoggerConfig struct {
 
 type BeforeRun func(app *Application)
 
+// AfterRun 服务退出（Run返回）后执行的收尾方法
+type AfterRun func(app *Application)
+
 // 返回默认的日志配置
 func defLoggerConfig() *LoggerConfig {
 	return &LoggerConfig{
@@ -94,6 +97,7 @@ type Application struct {
 	Curl         *Curl         // httpclient对象，用于发送http请求，如get，post
 	Jwt          *Jwt          // JWT对象
 	beforeRuns   []BeforeRun   // 运行前需要执行的函数列表
+	afterRuns    []AfterRun    // 退出后需要执行的函数列表（逆序执行，便于按依赖倒序清理）
 }
 
 // 启动服务
@@ -118,7 +122,10 @@ func (app *Application) run() error {
 		beforeRun(app)
 	}
 	app.Logger.Info("server started")
-	return http.ListenAndServe(fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port), router)
+	err := http.ListenAndServe(fmt.Sprintf("%s:%d", app.serverConfig.Host, app.serverConfig.Port), router)
+	// 服务退出后执行收尾钩子（逆序，便于按依赖倒序释放资源）
+	app.runAfterRuns()
+	return err
 }
 
 // 设置服务配置
@@ -167,6 +174,19 @@ func (app *Application) setJwtConfig(jwtConfig *JwtConfig) *Application {
 func (app *Application) addBefore(b BeforeRun) *Application {
 	app.beforeRuns = append(app.beforeRuns, b)
 	return app
+}
+
+// 添加退出后需要执行的方法
+func (app *Application) addAfter(a AfterRun) *Application {
+	app.afterRuns = append(app.afterRuns, a)
+	return app
+}
+
+// runAfterRuns 逆序执行退出钩子：后注册的通常依赖先注册的资源，逆序便于先释放依赖方
+func (app *Application) runAfterRuns() {
+	for i := len(app.afterRuns) - 1; i >= 0; i-- {
+		app.afterRuns[i](app)
+	}
 }
 
 // GetServerConfig 获取服务配置
